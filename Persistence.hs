@@ -188,25 +188,31 @@ mkSong SongData { sodName     =  sn
                                      , songDuration   =  sd
                                      }
 
+unSong (SongDb x) = x
+unAlbum (AlbumDb x) = x
+
+withSongDb :: (IntMap.IntMap SongData -> a) -> Query StereoidDb a
+withSongDb f = do db <- ask
+                  return $ f $ unSong $ sdbSongs db
+
 querySongBySongId :: Int -> Query StereoidDb (Maybe (Int,SongData))
-querySongBySongId id = do db <- ask
-                          let (SongDb songs) = sdbSongs db
-                          return $ imQ songs id
+querySongBySongId = withSongDb . (flip imQ) 
 
 querySongsBySongIds :: [Int] -> Query StereoidDb [(Int,SongData)]
 querySongsBySongIds ids = do db <- ask
                              let (SongDb songs) = sdbSongs db
                              return $ mapMaybe (imQ songs) ids
 
+querySongByForeign :: (SongData -> Int) -> Int -> Query StereoidDb [(Int,SongData)]
+querySongByForeign f id =  do db <- ask 
+                              let (SongDb songs) = sdbSongs db
+                              return $ IntMap.toList $ IntMap.filter ((id ==) . f) songs
+
 querySongsByAlbumId :: Int -> Query StereoidDb [(Int,SongData)]
-querySongsByAlbumId id = do db <- ask
-                            let (SongDb songs) = sdbSongs db
-                            return $ IntMap.toList $ IntMap.filter ((id ==) . sodAlbumId) songs
+querySongsByAlbumId = querySongByForeign sodAlbumId
 
 querySongsByArtistId :: Int -> Query StereoidDb [(Int,SongData)]
-querySongsByArtistId id = do db <- ask
-                             let (SongDb songs) = sdbSongs db
-                             return $ IntMap.toList $ IntMap.filter ((id ==) . sodArtistId) songs
+querySongsByArtistId = querySongByForeign sodArtistId
 
 queryAlbumCacheByAlbumIds :: [Int] -> Query StereoidDb [(Int,AlbumCacheData)]
 queryAlbumCacheByAlbumIds ids = do db <- ask

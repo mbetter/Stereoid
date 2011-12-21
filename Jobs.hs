@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Id3Test where
+module Jobs where
 
 import qualified Data.Map as Map
 import Data.Time.Clock.POSIX
