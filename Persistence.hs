@@ -198,6 +198,7 @@ withSongDb f = do db <- ask
 querySongBySongId :: Int -> Query StereoidDb (Maybe (Int,SongData))
 querySongBySongId = withSongDb . (flip imQ) 
 
+
 querySongsBySongIds :: [Int] -> Query StereoidDb [(Int,SongData)]
 querySongsBySongIds ids = do db <- ask
                              let (SongDb songs) = sdbSongs db
