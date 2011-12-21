@@ -191,19 +191,26 @@ mkSong SongData { sodName     =  sn
 unSong (SongDb x) = x
 unAlbum (AlbumDb x) = x
 
+songDb :: StereoidDb -> IntMap.IntMap SongData
+songDb StereoidDb {sdbSongs = SongDb x} = x
+
+withDb :: (StereoidDb -> a) -> (a -> b) -> Query StereoidDb b
+withDb unw f = do db <- ask
+                  return $ (f . unw) db
+
 withSongDb :: (IntMap.IntMap SongData -> a) -> Query StereoidDb a
-withSongDb f = do db <- ask
-                  return $ f $ unSong $ sdbSongs db
+withSongDb = withDb songDb
 
 querySongBySongId :: Int -> Query StereoidDb (Maybe (Int,SongData))
 querySongBySongId = withSongDb . (flip imQ) 
 
 
-imQs :: [Int] -> IntMap.IntMap SongData -> [(Int,SongData)]
+imQs :: [Int] -> IntMap.IntMap a -> [(Int,a)]
 imQs i s = mapMaybe (imQ s) i
 
 querySongsBySongIds' :: [Int] -> Query StereoidDb [(Int,SongData)]
 querySongsBySongIds' = withSongDb . imQs
+
 querySongsBySongIds :: [Int] -> Query StereoidDb [(Int,SongData)]
 querySongsBySongIds ids = do db <- ask
                              let (SongDb songs) = sdbSongs db
