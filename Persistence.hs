@@ -207,14 +207,11 @@ getDb :: (StereoidDb -> a) -> Query StereoidDb a
 getDb f = do db <- ask
              return $ f db
 
-withSongDb :: (IntMap.IntMap SongData -> a) -> Query StereoidDb a
-withSongDb = withDb songDb
-
 querySongBySongId :: Int -> Query StereoidDb (Maybe (Int,SongData))
-querySongBySongId = withSongDb . (flip imQ) 
+querySongBySongId = (withDb songDb) . (flip imQ) 
 
 querySongsBySongIds :: [Int] -> Query StereoidDb [(Int,SongData)]
-querySongsBySongIds = withSongDb . imQs
+querySongsBySongIds = (withDb songDb) . imQs
 
 fKey :: Eq b => (a -> b) -> b -> a -> Bool
 fKey f b a = (f a) == b
@@ -223,7 +220,7 @@ imFilterList :: (a -> Bool) -> IntMap.IntMap a -> [(Int,a)]
 imFilterList p = IntMap.toList . (IntMap.filter p)
 
 querySongsByForeignKey :: (SongData -> Bool) -> Query StereoidDb [(Int,SongData)]
-querySongsByForeignKey p = withSongDb $ (imFilterList $ p)
+querySongsByForeignKey p = (withDb songDb) $ (imFilterList $ p)
 
 querySongsByAlbumId :: Int -> Query StereoidDb [(Int,SongData)]
 querySongsByAlbumId = querySongsByForeignKey . (fKey sodAlbumId)
@@ -285,8 +282,6 @@ queryFileCache = (withDb fileCache) . Map.lookup
 queryFiles :: Query StereoidDb (Map.Map B.ByteString FileCacheData)
 queryFiles = getDb fileCache
 
-insertSongData' :: Int -> SongData -> Update StereoidDb ()
-insertSongData' key value = undefined
 insertSongData :: Int -> SongData -> Update StereoidDb ()
 insertSongData key value
     = do db <- get

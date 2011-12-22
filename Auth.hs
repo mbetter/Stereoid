@@ -88,8 +88,7 @@ newUser acid username p
          if exists then
              return (Left "Invalid Username")
          else do
-             let h1 = sha1 p
-             let ud = UserData { passHash = h1 } 
+             let ud = UserData { passHash = sha1 p } 
              update' acid (InsertUser username ud) 
              return (Right username)
 
