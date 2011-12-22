@@ -1,0 +1,13 @@
+The goal of the Stereoid project is to create a music management server that:
+1) interacts with the world entirely though a REST-ful API 
+2) uses HTTP streaming to serve music on demand
+
+By exposing metadata solely through an API, the actual consumption of data should
+be very client-agnostic, allowing for easily developed and featureful mobile apps,
+web apps, desktop apps, media center plugins, etc. 
+
+This repo also contains a Javascript web client that is being developed in parallel
+with the Stereoid server. This may eventually be split off into its own project.
+
+The server is written entirely in Haskell utilizing the Happstack web framework and
+Acid-state for data persistence.
