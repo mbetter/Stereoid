@@ -89,8 +89,6 @@ data ArtistMapData = ArtistMapData { armdName :: T.Text
 
 $(deriveSafeCopy 0 'base ''ArtistMapData)
 
-
-
 cacheToAlbum :: AlbumCacheData -> Int -> Album
 cacheToAlbum AlbumCacheData { alcdTitle = title
                             , alcdArtistId = artistid
@@ -114,7 +112,6 @@ data AlbumArtDb = AlbumArtDb !(IntMap.IntMap AlbumArtData) deriving (Typeable)
 data AlbumCache = AlbumCache !(IntMap.IntMap AlbumCacheData) deriving (Typeable)
 data ArtistCache = ArtistCache !(IntMap.IntMap ArtistCacheData) deriving (Typeable)
 data FileCache  = FileCache !(Map.Map B.ByteString FileCacheData) deriving (Typeable)
-
 data AlbumMap = AlbumMap !(Map.Map AlbumMapData Int) deriving (Typeable)
 data ArtistMap = ArtistMap !(Map.Map ArtistMapData Int) deriving (Typeable)
 
@@ -161,6 +158,9 @@ imQ :: IntMap.IntMap a -> Int -> Maybe (Int, a)
 imQ im id = g id $ IntMap.lookup id im
             where g = fmap . (,)
 
+imQs :: [Int] -> IntMap.IntMap a -> [(Int,a)]
+imQs i s = mapMaybe (imQ s) i
+
 prefixList :: [String]
 prefixList = [ "The "
              , "An "
@@ -188,15 +188,24 @@ mkSong SongData { sodName     =  sn
                                      , songDuration   =  sd
                                      }
 
-unSong (SongDb x) = x
-unAlbum (AlbumDb x) = x
-
 songDb :: StereoidDb -> IntMap.IntMap SongData
 songDb StereoidDb {sdbSongs = SongDb x} = x
+albumDb StereoidDb {sdbAlbums = AlbumDb x} = x
+artistDb StereoidDb {sdbArtists = ArtistDb x} = x
+albumArtDb StereoidDb {sdbArt = AlbumArtDb x} = x
+albumCache StereoidDb {sdbAlbumCache = AlbumCache x} = x
+albumMap StereoidDb {sdbAlbumMap = AlbumMap x} = x
+artistCache StereoidDb {sdbArtistCache = ArtistCache x} = x
+artistMap StereoidDb {sdbArtistMap = ArtistMap x} = x
+fileCache StereoidDb {sdbFileCache = FileCache x} = x
 
 withDb :: (StereoidDb -> a) -> (a -> b) -> Query StereoidDb b
 withDb unw f = do db <- ask
                   return $ (f . unw) db
+
+getDb :: (StereoidDb -> a) -> Query StereoidDb a
+getDb f = do db <- ask
+             return $ f db
 
 withSongDb :: (IntMap.IntMap SongData -> a) -> Query StereoidDb a
 withSongDb = withDb songDb
@@ -204,121 +213,80 @@ withSongDb = withDb songDb
 querySongBySongId :: Int -> Query StereoidDb (Maybe (Int,SongData))
 querySongBySongId = withSongDb . (flip imQ) 
 
-
-imQs :: [Int] -> IntMap.IntMap a -> [(Int,a)]
-imQs i s = mapMaybe (imQ s) i
-
-querySongsBySongIds' :: [Int] -> Query StereoidDb [(Int,SongData)]
-querySongsBySongIds' = withSongDb . imQs
-
 querySongsBySongIds :: [Int] -> Query StereoidDb [(Int,SongData)]
-querySongsBySongIds ids = do db <- ask
-                             let (SongDb songs) = sdbSongs db
-                             return $ mapMaybe (imQ songs) ids
+querySongsBySongIds = withSongDb . imQs
 
-querySongByForeign :: (SongData -> Int) -> Int -> Query StereoidDb [(Int,SongData)]
-querySongByForeign f id =  do db <- ask 
-                              let (SongDb songs) = sdbSongs db
-                              return $ IntMap.toList $ IntMap.filter ((id ==) . f) songs
+fKey :: Eq b => (a -> b) -> b -> a -> Bool
+fKey f b a = (f a) == b
+
+imFilterList :: (a -> Bool) -> IntMap.IntMap a -> [(Int,a)]
+imFilterList p = IntMap.toList . (IntMap.filter p)
+
+querySongsByForeignKey :: (SongData -> Bool) -> Query StereoidDb [(Int,SongData)]
+querySongsByForeignKey p = withSongDb $ (imFilterList $ p)
 
 querySongsByAlbumId :: Int -> Query StereoidDb [(Int,SongData)]
-querySongsByAlbumId = querySongByForeign sodAlbumId
+querySongsByAlbumId = querySongsByForeignKey . (fKey sodAlbumId)
 
 querySongsByArtistId :: Int -> Query StereoidDb [(Int,SongData)]
-querySongsByArtistId = querySongByForeign sodArtistId
+querySongsByArtistId = querySongsByForeignKey . (fKey sodArtistId)
 
 queryAlbumCacheByAlbumIds :: [Int] -> Query StereoidDb [(Int,AlbumCacheData)]
-queryAlbumCacheByAlbumIds ids = do db <- ask
-                                   let (AlbumCache albums) = sdbAlbumCache db
-                                   return $ mapMaybe (imQ albums) ids
+queryAlbumCacheByAlbumIds = (withDb albumCache) . imQs
 
 queryAlbumsByAlbumIds :: [Int] -> Query StereoidDb [(Int,AlbumData)]
-queryAlbumsByAlbumIds ids = do db <- ask
-                               let (AlbumDb albums) = sdbAlbums db
-                               return $ mapMaybe (imQ albums) ids
+queryAlbumsByAlbumIds = (withDb albumDb) . imQs
 
 queryAlbumCacheByAlbumId :: Int -> Query StereoidDb (Maybe (Int,AlbumCacheData))
-queryAlbumCacheByAlbumId id = do db <- ask
-                                 let (AlbumCache albums) = sdbAlbumCache db
-                                 return $ imQ albums id
+queryAlbumCacheByAlbumId = (withDb albumCache) . (flip imQ)
 
 queryAlbumByAlbumId :: Int -> Query StereoidDb (Maybe (Int,AlbumData))
-queryAlbumByAlbumId id = do db <- ask
-                            let (AlbumDb albums) = sdbAlbums db
-                            return $ imQ albums id
+queryAlbumByAlbumId = (withDb albumDb) . (flip imQ)
 
 queryArtistCacheByArtistId :: Int -> Query StereoidDb (Maybe (Int,ArtistCacheData))
-queryArtistCacheByArtistId id = do db <- ask
-                                   let (ArtistCache artists) = sdbArtistCache db
-                                   return $ imQ artists id
+queryArtistCacheByArtistId = (withDb artistCache) . (flip imQ)
 
 queryArtistCacheByArtistIds :: [Int] -> Query StereoidDb [(Int,ArtistCacheData)]
-queryArtistCacheByArtistIds ids = do db <- ask
-                                     let (ArtistCache artists) = sdbArtistCache db
-                                     return $ mapMaybe (imQ artists) ids
---
+queryArtistCacheByArtistIds = (withDb artistCache) . imQs
+
 queryArtByAlbumId :: Int -> Query StereoidDb (Maybe (Int,AlbumArtData))
-queryArtByAlbumId id = do db <- ask
-                          let (AlbumArtDb art) = sdbArt db
-                          return $ imQ art id
+queryArtByAlbumId = (withDb albumArtDb) . (flip imQ)
 
 queryArtistByArtistId :: Int -> Query StereoidDb (Maybe (Int,ArtistData))
-queryArtistByArtistId id = do db <- ask
-                              let (ArtistDb artists) = sdbArtists db
-                              return $ imQ artists id
+queryArtistByArtistId = (withDb artistDb) . (flip imQ)
 
 queryArtistsByArtistIds :: [Int] -> Query StereoidDb [(Int,ArtistData)]
-queryArtistsByArtistIds ids = do db <- ask
-                                 let (ArtistDb artists) = sdbArtists db
-                                 return $ mapMaybe (imQ artists) ids
+queryArtistsByArtistIds = (withDb artistDb) . imQs
 
-queryArtistCache:: Query StereoidDb (IntMap.IntMap ArtistCacheData)
-queryArtistCache = do db <- ask
-                      let (ArtistCache artists) = sdbArtistCache db
-                      return artists 
+queryArtistCache :: Query StereoidDb (IntMap.IntMap ArtistCacheData)
+queryArtistCache = getDb artistCache
 
 queryArtists:: Query StereoidDb (IntMap.IntMap ArtistData)
-queryArtists = do db <- ask
-                  let (ArtistDb artists) = sdbArtists db
-                  return artists 
+queryArtists = getDb artistDb
 
 querySongs:: Query StereoidDb (IntMap.IntMap SongData)
-querySongs = do db <- ask
-                let (SongDb songs) = sdbSongs db
-                return songs 
+querySongs = getDb songDb
 
 queryAlbumCache:: Query StereoidDb (IntMap.IntMap AlbumCacheData)
-queryAlbumCache = do db <- ask
-                     let (AlbumCache albums) = sdbAlbumCache db
-                     return albums 
+queryAlbumCache = getDb albumCache
 
 queryAlbums:: Query StereoidDb (IntMap.IntMap AlbumData)
-queryAlbums = do db <- ask
-                 let (AlbumDb albums) = sdbAlbums db
-                 return albums 
+queryAlbums = getDb albumDb
 
 queryArtistMap:: ArtistMapData -> Query StereoidDb (Maybe Int)
-queryArtistMap key = do db <- ask
-                        let (ArtistMap artists) = sdbArtistMap db
-                        return $ Map.lookup key artists 
+queryArtistMap = (withDb artistMap) . Map.lookup
 
 queryAlbumMap:: AlbumMapData -> Query StereoidDb (Maybe Int)
-queryAlbumMap key = do db <- ask
-                       let (AlbumMap albums) = sdbAlbumMap db
-                       return $ Map.lookup key albums 
+queryAlbumMap = (withDb albumMap) . Map.lookup
 
 queryFileCache :: B.ByteString -> Query StereoidDb (Maybe FileCacheData)
-queryFileCache key
-    = do db <- ask
-         let (FileCache filecache) = sdbFileCache db
-         return $ Map.lookup key filecache
+queryFileCache = (withDb fileCache) . Map.lookup
 
 queryFiles :: Query StereoidDb (Map.Map B.ByteString FileCacheData)
-queryFiles = do db <- ask
-                let (FileCache filecache) = sdbFileCache db
-                return filecache
+queryFiles = getDb fileCache
 
-
+insertSongData' :: Int -> SongData -> Update StereoidDb ()
+insertSongData' key value = undefined
 insertSongData :: Int -> SongData -> Update StereoidDb ()
 insertSongData key value
     = do db <- get
@@ -417,8 +385,6 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'queryArtistByArtistId
                           ,'queryArtistsByArtistIds
                           ])
-
-
 
 getFreeSongId :: (Monad m, MonadIO m) => AcidState StereoidDb -> m Int
 getFreeSongId acid = do
