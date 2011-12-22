@@ -1,0 +1,23 @@
+Add method to add / update album art. maybe: PUT or POST /albums/art. This 
+should allow for adding by file upload and adding by url - GET to be 
+performed by http client on the server
+
+Last.FM integration - need data structures for storage of metadata. Should 
+this be mixed in with local information or separate?
+
+Jobs system - catalog scans, art gathering, exernal api scans will be 
+classified as "jobs". These should be started by a POST request to /jobs 
+and forked asynchronously. status / results of jobs can be fed to 
+persistence layer from the jobs themselves and then retrieved with a GET 
+request. 
+
+Authentication - second phase of authentication needs to be implemented. 
+all requests that modify data on the server need stronger authentication. 
+Current plan is to require the url query string (including a nonce - 
+current auth timestamp ok?) be hashed on every such request.
+
+- "remember me" function needs to be added. authenticate method should 
+return session token plus a new, one-time use authentication token. 
+authentication should accept this new token in lieu of normal 
+authentication information, invalidate it and issue a new authentication 
+token.
