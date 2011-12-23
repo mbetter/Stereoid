@@ -17,38 +17,38 @@ getFilesFromDb :: (MonadIO m, IConnection d, MonadPlus m) => d -> m [(BS.ByteStr
 getFilesFromDb db = do
     songs <- liftIO $ handleSqlError $ quickQuery' db "SELECT id,file,update_time,addition_time FROM `song`" []  
     return $ map fileFromDbRow songs
-               where fileFromDbRow [id, file,update,addition] = ((fromSql file), item) 
-                       where item = FileCacheData { fcdSongId = (fromSql id)
-                                                  , fcdAddTime = (fromSql addition)
-                                                  , fcdUpdateTime  = (fromSql update)
+               where fileFromDbRow [id, file,update,addition] = ((fromSql file), item)
+                       where item = FileCacheData { fcdSongId = fromSql id
+                                                  , fcdAddTime = fromSql addition
+                                                  , fcdUpdateTime  = fromSql update
                                                   }
 
 getSongsFromDb :: (MonadIO m, IConnection d, MonadPlus m) => d -> m [(Int, SongData)]
 getSongsFromDb db = do
     songs <- liftIO $ handleSqlError $ quickQuery' db "SELECT id,title,track,file,album,artist,time,year FROM `song`" []  
     return $ map songFromDbRow songs
-               where songFromDbRow [id,title,track,file,album,artist,time,year] = ((fromSql id), item) 
-                       where item = SongData { sodName = (fromSql title)
-                                             , sodTrack = (fromSql track)
-                                             , sodFile = (fromSql file)
-                                             , sodAlbumId = (fromSql album)
-                                             , sodArtistId = (fromSql artist)
-                                             , sodYear = (fromSql year)
-                                             , sodDuration = (fromSql time)
+               where songFromDbRow [id,title,track,file,album,artist,time,year] = ((fromSql id), item)
+                       where item = SongData { sodName = fromSql title
+                                             , sodTrack = fromSql track
+                                             , sodFile = fromSql file
+                                             , sodAlbumId = fromSql album
+                                             , sodArtistId = fromSql artist
+                                             , sodYear = fromSql year
+                                             , sodDuration = fromSql time
                                              }
 
 getAlbumsFromDb :: (MonadIO m, IConnection d, MonadPlus m) => d -> m [(Int, AlbumData)]
 getAlbumsFromDb db = do
     albums <- liftIO $ handleSqlError $ quickQuery' db "SELECT id,name,prefix FROM `album`" []  
     return $ map albumFromDbRow albums
-               where albumFromDbRow [alid,albumname,albumpre] = ((fromSql alid), item) 
+               where albumFromDbRow [alid,albumname,albumpre] = ((fromSql alid), item)
                        where item = AlbumData { aldTitle = (formatWithPrefix (fromSql albumname) (fromSql albumpre)), aldSortTitle = (fromSql albumname) }
 
 getArtistsFromDb :: (MonadIO m, IConnection d, MonadPlus m) => d -> m [(Int, ArtistData)]
 getArtistsFromDb db = do
     artists <- liftIO $ handleSqlError $ quickQuery' db "SELECT id,name,prefix FROM `artist`" []  
     return $ map artistFromDbRow artists
-               where artistFromDbRow [alid,artistname,artistpre] = ((fromSql alid), item) 
+               where artistFromDbRow [alid,artistname,artistpre] = ((fromSql alid), item)
                        where item = ArtistData { ardName = (formatWithPrefix (fromSql artistname) (fromSql artistpre)), ardSortName = (fromSql artistname) }
 
 formatWithPrefix :: B.ByteString -> Maybe B.ByteString -> B.ByteString
