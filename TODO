@@ -1,3 +1,14 @@
+SERVER -------------------------------------------------------------
+
+Add "random albums" method. I'm thinking expose a "sort=" parameter on 
+/albums (everything else for that matter, too).
+
+Other parameters: "filter=", "search=". This will be complicated, we might
+have to rethink the data structures to allow for efficient querying. I
+would assume that we'd want these to be case insensitive, so the AlbumMap/
+ArtistMap would be a good place to start. Do we need to build explicit 
+prefix trees for filter?
+
 Add method to add / update album art. maybe: PUT or POST /albums/art. This 
 should allow for adding by file upload and adding by url - GET to be 
 performed by http client on the server
@@ -21,3 +32,36 @@ return session token plus a new, one-time use authentication token.
 authentication should accept this new token in lieu of normal 
 authentication information, invalidate it and issue a new authentication 
 token.
+
+JS ------------------------------------------------------------------
+
+How will we interact with objects other than albums? If Last.FM can give
+us good coverage on artist art, we should be able to use the same style
+but songs are certainly going to be different. I'm thinking a song viewer
+as a sidebar for song results and/or playlists would be nice.
+
+Seriously need to start work on the administrative interface. Eventually
+going to need a "jobs" section, a "users" section.
+
+Now Playing? Recently Played? Now Playing would be hard with how the HTTP
+streaming is set up now, server side work would be required to get triggers
+on what's happening after a stream uri is hit.
+
+First phase authentication isn't complete - if we have a token cookie, we
+should check it before we start looking for a new one. Also, we need to set
+up 401 error callbacks on all current ajax requests, redirect to the login
+if our session expires. Eventual flow should look like this:
+
+    1. Do we have session cookie?
+        Y - Check cookie - is it valid?
+            Y - Go to start page *END*
+            N - Goto 2
+        N - Goto 2
+    2. Do we have "remember me" cookie?
+        Y - Login with cookie, get new "remember me cookie", goto start page *END*
+        N - Goto 3
+    3. Get U/P, login.
+
+Investigate URL rewriting. Albums / artists / etc. should be bookmarkable, and 
+should be able to be be shared.
+
