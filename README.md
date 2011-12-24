@@ -11,3 +11,5 @@ with the Stereoid server. This may eventually be split off into its own project.
 
 The server is written entirely in Haskell utilizing the Happstack web framework and
 Acid-state for data persistence.
+
+![Screenshot] (http://cloud.github.com/downloads/mbetter/Stereoid/ss01.jpg)
