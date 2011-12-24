@@ -5,6 +5,7 @@ import JsonInstances
 import Routing
 import DataStructures
 import Persistence
+import Persistence.Types
 import qualified DataStructuresInternal as I
 import Data.Ord (comparing)
 import Data.List (sortBy)

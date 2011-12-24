@@ -2,6 +2,7 @@
 
 module Persistence where
 
+import Persistence.Types
 import Data.List (isPrefixOf, (\\))
 import Data.Typeable
 import qualified Data.Text as T
@@ -21,73 +22,27 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Set as Set
 import qualified Data.ByteString.UTF8 as B
 
-data SongData  =  SongData  { sodName     :: B.ByteString
-                            , sodTrack    :: Int
-                            , sodYear     :: Int
-                            , sodFile     :: B.ByteString
-                            , sodAlbumId  :: Int
-                            , sodArtistId :: Int
-                            , sodDuration :: Int
-                            } deriving (Eq,Ord,Typeable)
-
 $(deriveSafeCopy 0 'base ''SongData)
-
-data AlbumData =  AlbumData { aldTitle     :: B.ByteString
-                            , aldSortTitle :: B.ByteString
-                            } deriving (Eq, Ord, Typeable)
-
 $(deriveSafeCopy 0 'base ''AlbumData)
-
-data ArtistData = ArtistData { ardName   :: B.ByteString
-                             , ardSortName :: B.ByteString
-                             } deriving (Eq,Ord,Typeable)
-
 $(deriveSafeCopy 0 'base ''ArtistData)
-
-data AlbumArtData = AlbumArtData { aadMime :: B.ByteString
-                                 , aadArtFile  :: String
-                                 , aadThumbMime :: (Maybe B.ByteString)
-                                 , aadThumbFile :: (Maybe String)
-                                 } deriving (Eq,Ord,Typeable)
-
 $(deriveSafeCopy 0 'base ''AlbumArtData)
-
-data AlbumCacheData = AlbumCacheData { alcdTitle :: B.ByteString
-                                     , alcdSortTitle :: B.ByteString
-                                     , alcdArtistId :: Int
-                                     , alcdArtistName :: B.ByteString
-                                     , alcdArtistSortName :: B.ByteString
-                                     , alcdYear :: Int
-                                     , alcdSongIds :: [Int]
-                                     } deriving (Show,Eq,Ord,Typeable)
-
 $(deriveSafeCopy 0 'base ''AlbumCacheData)
-
-data ArtistCacheData = ArtistCacheData { arcdName :: B.ByteString
-                                       , arcdSortName :: B.ByteString
-                                       , arcdAlbumIds :: [Int]
-                                       } deriving (Eq,Ord,Typeable)
-
 $(deriveSafeCopy 0 'base ''ArtistCacheData)
-
-data FileCacheData = FileCacheData { fcdSongId :: Int
-                                   , fcdAddTime :: DS.Timestamp
-                                   , fcdUpdateTime :: DS.Timestamp
-                                   } deriving (Eq,Ord, Typeable)
-
 $(deriveSafeCopy 0 'base ''FileCacheData)
-
-data AlbumMapData = AlbumMapData { almdTitle :: T.Text
-                                 , almdArtistName :: T.Text
-                                 , almdYear  :: Int
-                                 } deriving (Show,Eq,Ord,Typeable)
-
 $(deriveSafeCopy 0 'base ''AlbumMapData)
-
-data ArtistMapData = ArtistMapData { armdName :: T.Text
-                                   } deriving (Show,Eq,Ord,Typeable)
-
 $(deriveSafeCopy 0 'base ''ArtistMapData)
+-- 
+$(deriveSafeCopy 0 'base ''SongDb)
+$(deriveSafeCopy 0 'base ''AlbumDb)
+$(deriveSafeCopy 0 'base ''ArtistDb)
+$(deriveSafeCopy 0 'base ''AlbumArtDb)
+$(deriveSafeCopy 0 'base ''ArtistCache)
+$(deriveSafeCopy 0 'base ''AlbumCache)
+$(deriveSafeCopy 0 'base ''FileCache)
+$(deriveSafeCopy 0 'base ''ArtistMap)
+$(deriveSafeCopy 0 'base ''AlbumMap)
+--
+$(deriveSafeCopy 0 'base ''StereoidDb)
 
 cacheToAlbum :: AlbumCacheData -> Int -> Album
 cacheToAlbum AlbumCacheData { alcdTitle = title
@@ -104,52 +59,6 @@ cacheToArtist :: ArtistCacheData -> Int -> DS.Artist
 cacheToArtist ArtistCacheData { arcdName = name } id = DS.Artist { DS.artistID = id
                                                                  , DS.artistName = name
                                                                  }
-
-data SongDb     = SongDb !(IntMap.IntMap     SongData) deriving (Typeable)
-data AlbumDb    = AlbumDb !(IntMap.IntMap    AlbumData) deriving (Typeable)
-data ArtistDb   = ArtistDb !(IntMap.IntMap   ArtistData) deriving (Typeable)
-data AlbumArtDb = AlbumArtDb !(IntMap.IntMap AlbumArtData) deriving (Typeable)
-data AlbumCache = AlbumCache !(IntMap.IntMap AlbumCacheData) deriving (Typeable)
-data ArtistCache = ArtistCache !(IntMap.IntMap ArtistCacheData) deriving (Typeable)
-data FileCache  = FileCache !(Map.Map B.ByteString FileCacheData) deriving (Typeable)
-data AlbumMap = AlbumMap !(Map.Map AlbumMapData Int) deriving (Typeable)
-data ArtistMap = ArtistMap !(Map.Map ArtistMapData Int) deriving (Typeable)
-
-$(deriveSafeCopy 0 'base ''SongDb)
-$(deriveSafeCopy 0 'base ''AlbumDb)
-$(deriveSafeCopy 0 'base ''ArtistDb)
-$(deriveSafeCopy 0 'base ''AlbumArtDb)
-$(deriveSafeCopy 0 'base ''ArtistCache)
-$(deriveSafeCopy 0 'base ''AlbumCache)
-$(deriveSafeCopy 0 'base ''FileCache)
-$(deriveSafeCopy 0 'base ''ArtistMap)
-$(deriveSafeCopy 0 'base ''AlbumMap)
-
-data StereoidDb = StereoidDb { sdbSongs   ::     SongDb
-                             , sdbAlbums  ::    AlbumDb
-                             , sdbArtists ::   ArtistDb
-                             , sdbArt     :: AlbumArtDb
-                             , sdbAlbumCache :: AlbumCache
-                             , sdbArtistCache :: ArtistCache
-                             , sdbFileCache :: FileCache
-                             , sdbAlbumMap :: AlbumMap
-                             , sdbArtistMap :: ArtistMap
-                             } deriving (Typeable)
-
-
-sdbEmpty :: StereoidDb
-sdbEmpty = StereoidDb { sdbSongs = (SongDb IntMap.empty)
-                      , sdbAlbums = (AlbumDb IntMap.empty)
-                      , sdbArtists = (ArtistDb IntMap.empty)
-                      , sdbArt = (AlbumArtDb IntMap.empty)
-                      , sdbAlbumCache = (AlbumCache IntMap.empty)
-                      , sdbArtistCache = (ArtistCache IntMap.empty)
-                      , sdbFileCache = (FileCache Map.empty)
-                      , sdbAlbumMap = (AlbumMap Map.empty)
-                      , sdbArtistMap = (ArtistMap Map.empty)
-                      }
-
-$(deriveSafeCopy 0 'base ''StereoidDb)
 
 flipIntMap :: Eq a => IntMap.IntMap a -> Map.Map a Int
 flipIntMap x = Map.fromAscList $ zip (IntMap.elems x) (IntMap.keys x)

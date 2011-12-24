@@ -11,6 +11,7 @@ import Auth
 import Data.Acid
 import Data.Acid.Advanced
 import Persistence
+import Persistence.Types
 import qualified Data.Map as Map
 import Control.Concurrent (killThread, forkIO)
 
