@@ -18,6 +18,22 @@ instance JSON Session where
                { sessionToken = sT
                }
 
+
+instance JSON Remember where
+    showJSON gd = makeObj
+        [ ("sessionToken", showJSON $ rSessionToken gd)
+        , ("loginToken", showJSON $ rRememberToken gd)
+        ]
+    readJSON (JSObject obj) = let
+            jsonObjAssoc = fromJSObject obj
+        in do
+            sT <- mLookup "sessionToken" jsonObjAssoc >>= readJSON
+            lT <- mLookup "loginToken" jsonObjAssoc >>= readJSON
+            return $ Remember
+                { rSessionToken = sT
+                , rRememberToken = lT
+                }
+
 instance JSON Song where
     showJSON gd = makeObj
         [ ("songID", showJSON $ songID gd)

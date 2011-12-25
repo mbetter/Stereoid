@@ -28,7 +28,7 @@ import Data.Time.Clock.POSIX
 import Data.Char
 import qualified Data.Map as Map
 
-data SessionData = SessionData { userId :: StereoidId, sessionExpires :: Timestamp }
+data SessionData = SessionData { userId :: StereoidId, sessionExpires :: Timestamp } | RememberData { rUserId :: StereoidId }
      deriving (Typeable)
 
 $(deriveSafeCopy 0 'base ''SessionData)
@@ -119,6 +119,26 @@ newSession acid min uid
          update' acid (InsertSession token ud)
          return token
     
+newRememberMe :: (Monad m, MonadIO m) => AcidState SessionMap -> StereoidId -> m SessionToken
+newRememberMe acid uid = do
+         let ud = RememberData { rUserId = uid }
+         token <- liftIO $ randomToken 64
+         update' acid (InsertSession token ud)
+         return token
+    
+checkRenewRememberMe :: (Monad m, MonadIO m) => AcidState SessionMap -> SessionToken -> StereoidId -> m (Maybe SessionToken)
+checkRenewRememberMe acid token user = do
+    oldT <- query' acid (LookupSession token)
+    case oldT of
+        Nothing                              -> return Nothing
+        Just rd@RememberData {rUserId = uid} -> if uid == user then do
+                                                    update' acid (DeleteSession token)
+                                                    newtoken <- liftIO $ randomToken 64
+                                                    update' acid (InsertSession newtoken rd)
+                                                    return $ Just newtoken
+                                                else return Nothing
+        _                                    -> return Nothing
+                                                
 checkExtendSession :: (Monad m, MonadIO m) => 
                  AcidState SessionMap -> Integer -> SessionToken -> m (Maybe StereoidId)
 checkExtendSession acid min token
@@ -135,6 +155,7 @@ checkExtendSession acid min token
                             let ud = SessionData { userId = uid, sessionExpires = expires }
                             update' acid (InsertSession token ud)
                             return (Just uid)
+            _       -> return Nothing
           
 
 extendSession :: (Monad m, MonadIO m) => 
@@ -149,6 +170,7 @@ extendSession acid min token
                     let ud = SessionData { userId = uid, sessionExpires = expires }
                     update' acid (InsertSession token ud)
                     return (Just token)
+            _       -> return Nothing
           
 
 randomToken :: Int -> IO SessionToken

@@ -27,12 +27,14 @@ all requests that modify data on the server need stronger authentication.
 Current plan is to require the url query string (including a nonce - 
 current auth timestamp ok?) be hashed on every such request.
 
-- "remember me" function needs to be added. authenticate method should 
-return session token plus a new, one-time use authentication token. 
-authentication should accept this new token in lieu of normal 
-authentication information, invalidate it and issue a new authentication 
-token.
-
+ x   - "remember me" function needs to be added. authenticate method should 
+ x   return session token plus a new, one-time use authentication token. 
+ x   authentication should accept this new token in lieu of normal 
+ x   authentication information, invalidate it and issue a new authentication 
+ x   token.
+ x 
+ x DONE SERVER SIDE, NEEDS JS SUPPORT AND TESTING
+    
 JS ------------------------------------------------------------------
 
 How will we interact with objects other than albums? If Last.FM can give

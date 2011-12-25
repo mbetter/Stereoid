@@ -45,6 +45,9 @@ data Artist = Artist { artistID :: Int
 
 
 data Session = Session { sessionToken :: SessionToken }
+data Remember = Remember { rRememberToken :: SessionToken
+                         , rSessionToken :: SessionToken
+                         }
 
 instance ToMessage M3UPlaylist where
     toContentType _ = C.pack "audio/x-mpegurl"
