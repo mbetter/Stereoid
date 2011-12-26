@@ -1,5 +1,8 @@
 SERVER -------------------------------------------------------------
 
+Add hooks on update functions to update all dependent datasets. High
+priority, this will simplify code greatly in many other places.
+
 Building album and artist caches is really, really slow. I suspect that
 we're doing something really, really wrong.
 
