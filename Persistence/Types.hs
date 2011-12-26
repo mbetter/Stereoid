@@ -70,6 +70,18 @@ data FileCache  = FileCache !(Map.Map B.ByteString FileCacheData) deriving (Type
 data AlbumMap = AlbumMap !(Map.Map AlbumMapData Int) deriving (Typeable)
 data ArtistMap = ArtistMap !(Map.Map ArtistMapData Int) deriving (Typeable)
 
+data Stats = Stats { statsArtistCount :: Int
+                   , statsAlbumCount :: Int
+                   , statsSongCount :: Int
+                   , statsLastUpdate :: DS.Timestamp
+                   } deriving (Typeable)
+
+sdbStatsEmpty :: Stats
+sdbStatsEmpty = Stats { statsArtistCount = 0
+                      , statsAlbumCount = 0
+                      , statsSongCount = 0
+                      , statsLastUpdate = 0
+                      }
 data StereoidDb = StereoidDb { sdbSongs   ::     SongDb
                              , sdbAlbums  ::    AlbumDb
                              , sdbArtists ::   ArtistDb
@@ -79,6 +91,7 @@ data StereoidDb = StereoidDb { sdbSongs   ::     SongDb
                              , sdbFileCache :: FileCache
                              , sdbAlbumMap :: AlbumMap
                              , sdbArtistMap :: ArtistMap
+                             , sdbStats       :: Stats
                              } deriving (Typeable)
 
 
@@ -92,4 +105,5 @@ sdbEmpty = StereoidDb { sdbSongs = (SongDb IntMap.empty)
                       , sdbFileCache = (FileCache Map.empty)
                       , sdbAlbumMap = (AlbumMap Map.empty)
                       , sdbArtistMap = (ArtistMap Map.empty)
+                      , sdbStats = sdbStatsEmpty
                       }

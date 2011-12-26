@@ -3,7 +3,7 @@
 module Persistence where
 
 import Persistence.Types
-import Data.List (isPrefixOf, (\\))
+import Data.List (isPrefixOf, (\\), foldl')
 import Data.Typeable
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
@@ -41,6 +41,7 @@ $(deriveSafeCopy 0 'base ''AlbumCache)
 $(deriveSafeCopy 0 'base ''FileCache)
 $(deriveSafeCopy 0 'base ''ArtistMap)
 $(deriveSafeCopy 0 'base ''AlbumMap)
+$(deriveSafeCopy 0 'base ''Stats)
 --
 $(deriveSafeCopy 0 'base ''StereoidDb)
 
@@ -107,6 +108,7 @@ albumMap StereoidDb {sdbAlbumMap = AlbumMap x} = x
 artistCache StereoidDb {sdbArtistCache = ArtistCache x} = x
 artistMap StereoidDb {sdbArtistMap = ArtistMap x} = x
 fileCache StereoidDb {sdbFileCache = FileCache x} = x
+stats StereoidDb { sdbStats = x } = x
 
 withDb :: (StereoidDb -> a) -> (a -> b) -> Query StereoidDb b
 withDb unw f = do db <- ask
@@ -190,6 +192,13 @@ queryFileCache = (withDb fileCache) . Map.lookup
 
 queryFiles :: Query StereoidDb (Map.Map B.ByteString FileCacheData)
 queryFiles = getDb fileCache
+
+queryStats :: Query StereoidDb Stats
+queryStats = getDb stats
+
+updateStats :: Stats -> Update StereoidDb ()
+updateStats s = do db <- get
+                   put (db { sdbStats = s }) 
 
 insertSongData :: Int -> SongData -> Update StereoidDb ()
 insertSongData key value
@@ -288,6 +297,8 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'queryArtistCacheByArtistIds
                           ,'queryArtistByArtistId
                           ,'queryArtistsByArtistIds
+                          ,'queryStats
+                          ,'updateStats
                           ])
 
 getFreeSongId :: (Monad m, MonadIO m) => AcidState StereoidDb -> m Int
@@ -478,6 +489,41 @@ buildAlbumCache acid = do
                                                                , alcdArtistSortName = (ardSortName artist)
                                                                , alcdSongIds = ((fst . unzip) all)
                                                                }))
+
+lastUpdate :: (Monad m, MonadIO m) => AcidState StereoidDb -> m DS.Timestamp
+lastUpdate  acid = do
+    stats <- query' acid (QueryStats)
+    return $ statsLastUpdate stats
+
+songCount :: (Monad m, MonadIO m) => AcidState StereoidDb -> m Int
+songCount acid = do
+    stats <- query' acid (QueryStats)
+    return $ statsSongCount stats
+
+artistCount :: (Monad m, MonadIO m) => AcidState StereoidDb -> m Int
+artistCount acid = do
+    stats <- query' acid (QueryStats)
+    return $ statsArtistCount stats
+
+albumCount :: (Monad m, MonadIO m) => AcidState StereoidDb -> m Int
+albumCount acid = do
+    stats <- query' acid (QueryStats)
+    return $ statsAlbumCount stats
+
+buildStats :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
+buildStats acid = do
+    songs <- query' acid (QuerySongs)
+    albums <- query' acid (QueryAlbums)
+    artists <- query' acid (QueryArtists)
+    files <- query' acid (QueryFiles)
+    update' acid (UpdateStats $ stats songs albums files)
+            where stats songs albums files = Stats { statsSongCount = IntMap.size songs
+                                      , statsAlbumCount = IntMap.size albums
+                                      , statsArtistCount = IntMap.size albums
+                                      , statsLastUpdate = lastUpdate files
+                                      }
+                  lastUpdate = foldl' f 0 . Map.elems
+                  f x (FileCacheData _ at ut) = max x $ max at ut 
 
 {-
 main :: IO ()
