@@ -1,5 +1,8 @@
 SERVER -------------------------------------------------------------
 
+Building album and artist caches is really, really slow. I suspect that
+we're doing something really, really wrong.
+
 Add "random albums" method. I'm thinking expose a "sort=" parameter on 
 /albums (everything else for that matter, too).
 

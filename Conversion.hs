@@ -2,6 +2,7 @@
 module Conversion where
 
 import Persistence
+import Persistence.Types
 import DataStructures
 import Database.HDBC
 import Database.HDBC.MySQL
@@ -118,6 +119,10 @@ main = do
         putStrLn "Inserting in acid..."
         mapM (uncurry (insertRowFileCache sdb)) filedata 
         
+        putStrLn "Building stats..."
+        buildStats sdb
+        putStrLn "Done!"
+
         disconnect db 
         closeAcidState sdb
         putStrLn "Done."
