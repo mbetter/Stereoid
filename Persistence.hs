@@ -10,6 +10,8 @@ import qualified Data.Text.Encoding as E
 import Data.Acid
 import Data.Acid.Advanced
 import Data.SafeCopy
+import System.Random.Shuffle (shuffle')
+import System.Random (mkStdGen)
 import Data.Maybe (mapMaybe)
 import qualified DataStructures as DS
 import DataStructuresInternal
@@ -332,16 +334,12 @@ getSong acid id = do
 getSongFile :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe B.ByteString)
 getSongFile acid id = do 
     qr <- query' acid (QuerySongBySongId id)
-    case qr of
-        Nothing       -> return Nothing
-        Just (_,song) -> return $ Just $ (sodFile song) 
+    return $ fmap (sodFile . snd) qr
 
 getAlbum :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe Album)
 getAlbum acid id = do 
     qr <- query' acid (QueryAlbumCacheByAlbumId id)
-    case qr of
-        Nothing      -> return Nothing
-        Just (_,acd) -> return $ Just $ cacheToAlbum acd id
+    return $ fmap ((flip cacheToAlbum $ id) . snd) qr
 
 getArtist :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe DS.Artist)
 getArtist acid id = do 
@@ -383,6 +381,21 @@ getSongsByAlbumId acid id = do
             return $ map (f acd) songs 
                 where f alb (sid,sdat) = mkSong sdat sid (alcdTitle acd) (alcdArtistName acd) 
 
+getAlbumsRandom :: (Monad m, MonadIO m) => AcidState StereoidDb -> (Int,Int) -> m [Album]
+getAlbumsRandom acid ol = do
+    stats <- query' acid (QueryStats)
+    getAlbumsSorted acid (sortRandom seed (statsAlbumCount stats)) ol
+                    where seed = 100
+
+sortRandom :: Int -> Int -> [(Int,AlbumCacheData)] -> [(Int,AlbumCacheData)]
+sortRandom seed count albums = shuffle' albums count (mkStdGen seed)
+
+getAlbumsSorted :: (Monad m, MonadIO m) => AcidState StereoidDb -> ([(Int,AlbumCacheData)] -> [(Int,AlbumCacheData)]) -> (Int,Int) -> m [Album]
+getAlbumsSorted acid sort (offset,limit) = do 
+    albums <- query' acid (QueryAlbumCache)
+    return $ map f (take limit $ drop offset $ sort $ IntMap.toList albums)
+        where f (id, alb) = cacheToAlbum alb id
+
 getAlbums :: (Monad m, MonadIO m) => AcidState StereoidDb -> (Int,Int) -> m [Album]
 getAlbums acid (offset,limit) = do 
     albums <- query' acid (QueryAlbumCache)
@@ -400,7 +413,7 @@ getAlbumsByArtistId acid id = do
     qr <- query' acid (QueryArtistCacheByArtistId id)
     case qr of
         Nothing         -> return []
-        Just (aid, acd) -> do 
+        Just (_, acd) -> do 
             albums <- query' acid (QueryAlbumCacheByAlbumIds (arcdAlbumIds acd))
             return $ map (f) albums
                 where f (i,d)  = cacheToAlbum d i
