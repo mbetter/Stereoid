@@ -7,21 +7,12 @@ $.template( "loginTemplate", '<form id="loginform" action="javascript:true;"><in
 
 function loadAlbum(x,y) {
     $.ajax({
-        url: "http://core.lan/api/albums?limit=1&offset=" + rose(x,y),
+        url: "http://core.lan/api/albums?sort=random&seed=101&limit=1&offset=" + rose(x,y),
         context: $("#filler_" + x + "_" + y),
         success: function(data){
             var item = $(this);
             item.html( $.render( data, "albumTemplate"));
             item.data("json",data);
-/*
-            item.bind('click', function( event) {
-
-                if (!kinetic_moving ) {
-                    openItem (item );
-                }
-                return false;
-            });
-*/
         }
     });
 }

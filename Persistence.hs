@@ -381,11 +381,10 @@ getSongsByAlbumId acid id = do
             return $ map (f acd) songs 
                 where f alb (sid,sdat) = mkSong sdat sid (alcdTitle acd) (alcdArtistName acd) 
 
-getAlbumsRandom :: (Monad m, MonadIO m) => AcidState StereoidDb -> (Int,Int) -> m [Album]
-getAlbumsRandom acid ol = do
+getAlbumsRandom :: (Monad m, MonadIO m) => AcidState StereoidDb -> (Int,Int) -> Int -> m [Album]
+getAlbumsRandom acid ol seed = do
     stats <- query' acid (QueryStats)
     getAlbumsSorted acid (sortRandom seed (statsAlbumCount stats)) ol
-                    where seed = 100
 
 sortRandom :: Int -> Int -> [(Int,AlbumCacheData)] -> [(Int,AlbumCacheData)]
 sortRandom seed count albums = shuffle' albums count (mkStdGen seed)

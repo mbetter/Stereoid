@@ -220,7 +220,15 @@ artistsAll sdb = do
 albumsAll :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
 albumsAll sdb = do
     ol <- getOffsetLimit
-    albs <- getAlbums sdb ol
+    sort <- getDataFn $ lookRead "sort"
+    let getAlbs = case sort of
+                    (Left e) -> getAlbums sdb ol
+                    (Right "random") -> do
+                        s <- getDataFn $ lookRead "seed"
+                        case s of
+                            (Left e) -> getAlbums sdb ol
+                            (Right r) -> getAlbumsRandom sdb ol r
+    albs <- getAlbs
     albums <- mapM albumAddUrl albs
     ok $ toResponse $ showJSON albums
 
@@ -235,5 +243,7 @@ getOffsetLimit  = do
                     (Left e)  -> 50 
                     (Right i) -> i
     return (offset,limit)
+
+
 
 
