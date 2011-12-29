@@ -7,6 +7,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.ByteString.UTF8 as B
 import qualified Data.Text as T
 import qualified DataStructures as DS
+import qualified Data.Trie as Trie
 import Data.Typeable
 import DataStructuresInternal
 
@@ -69,6 +70,7 @@ data ArtistCache = ArtistCache !(IntMap.IntMap ArtistCacheData) deriving (Typeab
 data FileCache  = FileCache !(Map.Map B.ByteString FileCacheData) deriving (Typeable)
 data AlbumMap = AlbumMap !(Map.Map AlbumMapData Int) deriving (Typeable)
 data ArtistMap = ArtistMap !(Map.Map ArtistMapData Int) deriving (Typeable)
+data ArtistTrie = ArtistTrie !(Trie.Trie Int) deriving (Typeable)
 
 data Stats = Stats { statsArtistCount :: Int
                    , statsAlbumCount :: Int
@@ -92,6 +94,7 @@ data StereoidDb = StereoidDb { sdbSongs   ::     SongDb
                              , sdbAlbumMap :: AlbumMap
                              , sdbArtistMap :: ArtistMap
                              , sdbStats       :: Stats
+                             , sdbArtistTrie :: ArtistTrie
                              } deriving (Typeable)
 
 
@@ -106,4 +109,6 @@ sdbEmpty = StereoidDb { sdbSongs = (SongDb IntMap.empty)
                       , sdbAlbumMap = (AlbumMap Map.empty)
                       , sdbArtistMap = (ArtistMap Map.empty)
                       , sdbStats = sdbStatsEmpty
+                      , sdbArtistTrie = (ArtistTrie Trie.empty)
                       }
+

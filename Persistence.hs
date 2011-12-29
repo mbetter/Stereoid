@@ -10,6 +10,7 @@ import qualified Data.Text.Encoding as E
 import Data.Acid
 import Data.Acid.Advanced
 import Data.SafeCopy
+import qualified Data.Trie as Trie
 import System.Random.Shuffle (shuffle')
 import System.Random (mkStdGen)
 import Data.Maybe (mapMaybe)
@@ -44,6 +45,8 @@ $(deriveSafeCopy 0 'base ''FileCache)
 $(deriveSafeCopy 0 'base ''ArtistMap)
 $(deriveSafeCopy 0 'base ''AlbumMap)
 $(deriveSafeCopy 0 'base ''Stats)
+$(deriveSafeCopy 0 'base ''Trie.Trie)
+$(deriveSafeCopy 0 'base ''ArtistTrie)
 --
 $(deriveSafeCopy 0 'base ''StereoidDb)
 
@@ -109,6 +112,7 @@ albumCache StereoidDb {sdbAlbumCache = AlbumCache x} = x
 albumMap StereoidDb {sdbAlbumMap = AlbumMap x} = x
 artistCache StereoidDb {sdbArtistCache = ArtistCache x} = x
 artistMap StereoidDb {sdbArtistMap = ArtistMap x} = x
+artistTrie StereoidDb {sdbArtistTrie = ArtistTrie x} = x
 fileCache StereoidDb {sdbFileCache = FileCache x} = x
 stats StereoidDb { sdbStats = x } = x
 
@@ -186,6 +190,9 @@ queryAlbums = getDb albumDb
 queryArtistMap:: ArtistMapData -> Query StereoidDb (Maybe Int)
 queryArtistMap = (withDb artistMap) . Map.lookup
 
+queryArtistTrie:: B.ByteString -> Query StereoidDb (Trie.Trie Int)
+queryArtistTrie = (withDb artistTrie) . Trie.submap
+
 queryAlbumMap:: AlbumMapData -> Query StereoidDb (Maybe Int)
 queryAlbumMap = (withDb albumMap) . Map.lookup
 
@@ -244,6 +251,11 @@ insertFileCacheData key value
          let (FileCache filecache) = sdbFileCache db
          put (db { sdbFileCache = FileCache (Map.insert key value filecache) })
 
+insertArtistTrie:: ArtistTrie -> Update StereoidDb ()
+insertArtistTrie value
+    = do db <- get
+         put (db { sdbArtistTrie = value })
+
 insertArtistMap:: ArtistMap -> Update StereoidDb ()
 insertArtistMap value
     = do db <- get
@@ -276,6 +288,7 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'insertArtistCacheData
                           ,'insertArtistMapData
                           ,'insertArtistMap
+                          ,'insertArtistTrie
                           ,'insertFileCacheData
                           ,'queryFileCache
                           ,'queryFiles
@@ -291,6 +304,7 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'queryAlbums
                           ,'queryAlbumMap
                           ,'queryArtistMap
+                          ,'queryArtistTrie
                           ,'queryAlbumCache
                           ,'querySongs
                           ,'queryArtists
@@ -449,6 +463,14 @@ buildArtistMap acid = do
     artists <- query' acid (QueryArtistCache)
     update' acid (InsertArtistMap $ ArtistMap (Map.mapKeys f $ flipIntMap artists))
             where f ArtistCacheData { arcdName = name } = ArtistMapData { armdName = T.toUpper $ E.decodeUtf8 name } 
+
+trieFromIm :: IntMap.IntMap ArtistCacheData -> Trie.Trie Int
+trieFromIm im = Trie.fromList $ zip (map arcdName (IntMap.elems im)) (IntMap.keys im)
+
+buildArtistTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
+buildArtistTrie acid = do
+    artists <- query' acid (QueryArtistCache)
+    update' acid (InsertArtistTrie $ ArtistTrie $ Trie.fromList $ zip (map arcdName (IntMap.elems artists)) (IntMap.keys artists))
 
 buildArtistCache :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
 buildArtistCache acid = do 
