@@ -119,6 +119,9 @@ main = do
         putStrLn "Inserting in acid..."
         mapM (uncurry (insertRowFileCache sdb)) filedata 
         
+        putStrLn "Building artist trie..."
+        buildArtistTrie sdb
+
         putStrLn "Building stats..."
         buildStats sdb
         putStrLn "Done!"

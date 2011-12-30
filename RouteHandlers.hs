@@ -13,6 +13,8 @@ import Control.Monad (msum, liftM)
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString as BS
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as E
 import Database.HDBC
 import Auth
 import Data.Acid
@@ -220,14 +222,17 @@ artistsAll sdb = do
 albumsAll :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
 albumsAll sdb = do
     ol <- getOffsetLimit
+    filter <- getDataFn $ lookRead "artist"
     sort <- getDataFn $ lookRead "sort"
-    let getAlbs = case sort of
+    let getAlbs = case filter of
+                (Left e) -> case sort of
                     (Left e) -> getAlbums sdb ol
                     (Right "random") -> do
                         s <- getDataFn $ lookRead "seed"
                         case s of
                             (Left e) -> getAlbums sdb ol
                             (Right r) -> getAlbumsRandom sdb ol r
+                (Right r) -> filterArtistTrie sdb (E.encodeUtf8 $ T.toUpper $ T.pack r)
     albs <- getAlbs
     albums <- mapM albumAddUrl albs
     ok $ toResponse $ showJSON albums

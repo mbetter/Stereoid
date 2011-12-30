@@ -1,3 +1,4 @@
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE OverloadedStrings,TypeFamilies, DeriveDataTypeable, TemplateHaskell, TypeSynonymInstances #-}
 
 module Persistence where
@@ -24,6 +25,8 @@ import qualified Data.Map as Map
 import qualified Data.IntMap as IntMap
 import qualified Data.Set as Set
 import qualified Data.ByteString.UTF8 as B
+
+deriving instance Typeable1 (Trie.Trie)
 
 $(deriveSafeCopy 0 'base ''SongData)
 $(deriveSafeCopy 0 'base ''AlbumData)
@@ -470,7 +473,16 @@ trieFromIm im = Trie.fromList $ zip (map arcdName (IntMap.elems im)) (IntMap.key
 buildArtistTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
 buildArtistTrie acid = do
     artists <- query' acid (QueryArtistCache)
-    update' acid (InsertArtistTrie $ ArtistTrie $ Trie.fromList $ zip (map arcdName (IntMap.elems artists)) (IntMap.keys artists))
+    update' acid (InsertArtistTrie $ ArtistTrie $ Trie.fromList $ zip (map f (IntMap.elems artists)) (IntMap.keys artists))
+    where f = E.encodeUtf8 . T.toUpper . E.decodeUtf8 . arcdName
+
+filterArtistTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> B.ByteString -> m [Album]
+filterArtistTrie acid tx = do
+    artists <- query' acid (QueryArtistCache)
+    tr <- query' acid (QueryArtistTrie tx)
+    albums <- query' acid (QueryAlbumCacheByAlbumIds (concatMap (arcdAlbumIds . snd) $ imQs (Trie.elems tr) artists))
+    return $ map (f) albums
+             where f (i,d)  = cacheToAlbum d i
 
 buildArtistCache :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
 buildArtistCache acid = do 
