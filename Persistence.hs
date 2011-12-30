@@ -193,7 +193,7 @@ queryAlbums = getDb albumDb
 queryArtistMap:: ArtistMapData -> Query StereoidDb (Maybe Int)
 queryArtistMap = (withDb artistMap) . Map.lookup
 
-queryArtistTrie:: B.ByteString -> Query StereoidDb (Trie.Trie Int)
+queryArtistTrie:: B.ByteString -> Query StereoidDb (Trie.Trie [Int])
 queryArtistTrie = (withDb artistTrie) . Trie.submap
 
 queryAlbumMap:: AlbumMapData -> Query StereoidDb (Maybe Int)
@@ -467,20 +467,16 @@ buildArtistMap acid = do
     update' acid (InsertArtistMap $ ArtistMap (Map.mapKeys f $ flipIntMap artists))
             where f ArtistCacheData { arcdName = name } = ArtistMapData { armdName = T.toUpper $ E.decodeUtf8 name } 
 
-trieFromIm :: IntMap.IntMap ArtistCacheData -> Trie.Trie Int
-trieFromIm im = Trie.fromList $ zip (map arcdName (IntMap.elems im)) (IntMap.keys im)
-
 buildArtistTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
 buildArtistTrie acid = do
     artists <- query' acid (QueryArtistCache)
-    update' acid (InsertArtistTrie $ ArtistTrie $ Trie.fromList $ zip (map f (IntMap.elems artists)) (IntMap.keys artists))
+    update' acid (InsertArtistTrie $ ArtistTrie $ Trie.fromList $ zip (map f (IntMap.elems artists)) (map arcdAlbumIds (IntMap.elems artists)))
     where f = E.encodeUtf8 . T.toUpper . E.decodeUtf8 . arcdName
 
 filterArtistTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> B.ByteString -> m [Album]
 filterArtistTrie acid tx = do
-    artists <- query' acid (QueryArtistCache)
     tr <- query' acid (QueryArtistTrie tx)
-    albums <- query' acid (QueryAlbumCacheByAlbumIds (concatMap (arcdAlbumIds . snd) $ imQs (Trie.elems tr) artists))
+    albums <- query' acid (QueryAlbumCacheByAlbumIds (concat $ Trie.elems tr))
     return $ map (f) albums
              where f (i,d)  = cacheToAlbum d i
 

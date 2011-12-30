@@ -70,7 +70,7 @@ data ArtistCache = ArtistCache !(IntMap.IntMap ArtistCacheData) deriving (Typeab
 data FileCache  = FileCache !(Map.Map B.ByteString FileCacheData) deriving (Typeable)
 data AlbumMap = AlbumMap !(Map.Map AlbumMapData Int) deriving (Typeable)
 data ArtistMap = ArtistMap !(Map.Map ArtistMapData Int) deriving (Typeable)
-data ArtistTrie = ArtistTrie !(Trie.Trie Int) deriving (Typeable)
+data ArtistTrie = ArtistTrie !(Trie.Trie [Int]) deriving (Typeable)
 
 data Stats = Stats { statsArtistCount :: Int
                    , statsAlbumCount :: Int
