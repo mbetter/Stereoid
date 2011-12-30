@@ -22,6 +22,8 @@ would assume that we'd want these to be case insensitive, so the AlbumMap/
 ArtistMap would be a good place to start. Do we need to build explicit 
 prefix trees for filter?
 
+ x  filter partially implemented (/albums?artist=a)
+
 Add method to add / update album art. maybe: PUT or POST /albums/art. This 
 should allow for adding by file upload and adding by url - GET to be 
 performed by http client on the server
