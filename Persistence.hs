@@ -532,25 +532,17 @@ buildAlbumCache acid = do
                                                                , alcdSongIds = ((fst . unzip) all)
                                                                }))
 
-lastUpdate :: (Monad m, MonadIO m) => AcidState StereoidDb -> m DS.Timestamp
-lastUpdate  acid = do
-    stats <- query' acid (QueryStats)
-    return $ statsLastUpdate stats
+lastUpdate :: (Functor m, Monad m, MonadIO m) => AcidState StereoidDb -> m DS.Timestamp
+lastUpdate  acid = fmap statsLastUpdate $ query' acid (QueryStats)
 
-songCount :: (Monad m, MonadIO m) => AcidState StereoidDb -> m Int
-songCount acid = do
-    stats <- query' acid (QueryStats)
-    return $ statsSongCount stats
+songCount :: (Functor m, Monad m, MonadIO m) => AcidState StereoidDb -> m Int
+songCount acid = fmap statsSongCount $ query' acid (QueryStats)
 
-artistCount :: (Monad m, MonadIO m) => AcidState StereoidDb -> m Int
-artistCount acid = do
-    stats <- query' acid (QueryStats)
-    return $ statsArtistCount stats
+artistCount :: (Functor m, Monad m, MonadIO m) => AcidState StereoidDb -> m Int
+artistCount acid = fmap statsArtistCount $ query' acid (QueryStats)
 
-albumCount :: (Monad m, MonadIO m) => AcidState StereoidDb -> m Int
-albumCount acid = do
-    stats <- query' acid (QueryStats)
-    return $ statsAlbumCount stats
+albumCount :: (Functor m, Monad m, MonadIO m) => AcidState StereoidDb -> m Int
+albumCount acid = fmap statsAlbumCount $ query' acid (QueryStats)
 
 buildStats :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
 buildStats acid = do
