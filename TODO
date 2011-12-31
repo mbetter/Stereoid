@@ -23,6 +23,13 @@ ArtistMap would be a good place to start. Do we need to build explicit
 prefix trees for filter?
 
  x  filter partially implemented (/albums?artist=a)
+ -  reversed word indexes will be perfect for search, need to decide on
+ -  data layout ( global? artist, album, song separate? need data structures
+ -  for global search results )
+
+Look into generalizing the index / cache structures. There's going to be
+a ton of index updating code needed the way things are currently, maybe
+we can simplify the whole thing.
 
 Add method to add / update album art. maybe: PUT or POST /albums/art. This 
 should allow for adding by file upload and adding by url - GET to be 
@@ -41,14 +48,6 @@ Authentication - second phase of authentication needs to be implemented.
 all requests that modify data on the server need stronger authentication. 
 Current plan is to require the url query string (including a nonce - 
 current auth timestamp ok?) be hashed on every such request.
-
- x   - "remember me" function needs to be added. authenticate method should 
- x   return session token plus a new, one-time use authentication token. 
- x   authentication should accept this new token in lieu of normal 
- x   authentication information, invalidate it and issue a new authentication 
- x   token.
- x 
- x DONE SERVER SIDE, NEEDS JS SUPPORT AND TESTING
     
 JS ------------------------------------------------------------------
 
@@ -63,21 +62,6 @@ going to need a "jobs" section, a "users" section.
 Now Playing? Recently Played? Now Playing would be hard with how the HTTP
 streaming is set up now, server side work would be required to get triggers
 on what's happening after a stream uri is hit.
-
-First phase authentication isn't complete - if we have a token cookie, we
-should check it before we start looking for a new one. Also, we need to set
-up 401 error callbacks on all current ajax requests, redirect to the login
-if our session expires. Eventual flow should look like this:
-
-    1. Do we have session cookie?
-        Y - Check cookie - is it valid?
-            Y - Go to start page *END*
-            N - Goto 2
-        N - Goto 2
-    2. Do we have "remember me" cookie?
-        Y - Login with cookie, get new "remember me cookie", goto start page *END*
-        N - Goto 3
-    3. Get U/P, login.
 
 Investigate URL rewriting. Albums / artists / etc. should be bookmarkable, and 
 should be able to be be shared.
