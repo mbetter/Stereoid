@@ -88,36 +88,29 @@ addUser acid = do
 authorize :: AcidState UserMap -> AcidState SessionMap -> RouteT Sitemap (ServerPartT IO) Response
 authorize users sessions = do
     username <- look "username"
-    hash <- look "auth"
-    salt <- look "timestamp"
-    auth <- (authUser users username hash salt)
-    if auth then do
-        token <- (newSession sessions 60 username) 
-        rq <- getDataFn $ look "rememberme"
-        case rq of
-            (Left _) -> ok $ toResponse $ showJSON Session { sessionToken = token }
-            (Right _) -> do lT <- newRememberMe sessions username
-                            ok $ toResponse $ showJSON Remember { rSessionToken = token, rRememberToken = lT }
---      Cookie.addCookie Cookie.Session (Cookie.mkCookie "token" token)
-    else
-        forbidden $ toResponse $ "Invalid username/password"
-{-
-    s <- getDataFn $ lookRead "limit"
-    let offset = case r of
-                    (Left e)  -> 0  -}
--- checkRenewRememberMe :: (Monad m, MonadIO m) => AcidState SessionMap -> SessionToken -> StereoidId -> m (Maybe SessionToken)
-
-remembered :: AcidState UserMap -> AcidState SessionMap -> RouteT Sitemap (ServerPartT IO) Response
-remembered users sessions = do 
-    username <- look "username"
-    token <- look "token"
-    rq <- checkRenewRememberMe sessions token username
-    case rq of
-        Nothing -> forbidden $ toResponse $ "Invalid login token"
-        Just newtoken -> do
-           sess <- newSession sessions 60 username
-           ok $ toResponse $ showJSON Remember { rSessionToken = sess, rRememberToken = newtoken }
-
+    lt <- getDataFn $ look "logintoken"
+    case lt of
+        (Left _ ) -> do
+            hash <- look "auth"
+            salt <- look "timestamp"
+            auth <- (authUser users username hash salt)
+            if auth then do
+                token <- (newSession sessions 60 username) 
+                rq <- getDataFn $ look "rememberme"
+                case rq of
+                    (Left _) -> ok $ toResponse $ showJSON Session { sessionToken = token }
+                    (Right _) -> do lT <- newRememberMe sessions username
+                                    ok $ toResponse $ showJSON Remember { rSessionToken = token, rRememberToken = lT }
+            else
+                forbidden $ toResponse $ "Invalid username/password"
+        (Right logintoken) -> do
+            rq <- checkRenewRememberMe sessions logintoken username
+            case rq of
+                Nothing -> forbidden $ toResponse $ "Invalid login token"
+                Just newtoken -> do
+                   sess <- newSession sessions 60 username
+                   ok $ toResponse $ showJSON Remember { rSessionToken = sess, rRememberToken = newtoken }
+            
 songAddUrl :: I.Song -> RouteT Sitemap (ServerPartT IO) Song
 songAddUrl I.Song { I.songID  = id
                   , I.songName = name

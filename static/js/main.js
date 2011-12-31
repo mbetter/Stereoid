@@ -3,11 +3,12 @@ $.template( "albumTemplate", '<a href="#"><span class="a">{{=albumArtistName}}</
 $.template( "contentWrapperTemplate", '<div id="content-preview" class="content-preview"><div id="content-wrapper"></div><span class="ib-close" style="display:none;">Close Preview</span></div>');
 $.template( "contentTemplate", '<a href="{{=albumM3UUrl}}"><img id="album-art" src="{{=albumArtUrl}}" /></a><div id="content-info"><h2>{{=albumTitle}}<span id="content-artist">{{=albumArtistName}}</span></h2><div id="content-songs" style="display:none;"></div></div>');
 $.template( "songTemplate", '<span class="song-track">{{=songTrack}}</span><span class="song-name">{{=songName}}</span>');
-$.template( "loginTemplate", '<form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /></form>');
+$.template( "loginTemplate", '<div id="login"><form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /><span id="rememberme"><input type="checkbox" name="remember" id="remcheck" title="Remember me" />Remember me</span></form></div>');
 
+seed = Math.round((new Date()).getTime() / 1000);
 function loadAlbum(x,y) {
     $.ajax({
-        url: "http://core.lan/api/albums?sort=random&seed=101&limit=1&offset=" + rose(x,y),
+        url: "http://core.lan/api/albums?sort=random&seed=" + seed + "&limit=1&offset=" + rose(x,y),
         context: $("#filler_" + x + "_" + y),
         success: function(data){
             var item = $(this);
@@ -42,17 +43,55 @@ function showLogin () {
        $("#viewport").empty().append($.render( {}, "loginTemplate"));
        $("#loginform" ).submit( function (e) { 
             e.preventDefault();
-            authenticate($("#unameblock").val(),$("#pwblock").val());
+            l_authenticate($("#unameblock").val(),$("#pwblock").val());
             } );
 }
-function authenticate(username,password) {
+
+function r_authenticate() {
+    var username = $.jStorage.get('username',false);
+    var logintoken = $.jStorage.get('logintoken',false);
+
+    if (username && logintoken) {
+        $.ajax({
+            type: 'PUT', 
+            url: 'http://core.lan/api/sessions',
+            data: {
+                    'username'   : username,
+                    'logintoken' : logintoken
+                   },
+            success: function(data){
+                    console.log('login success');
+                    $.cookie('token',data.sessionToken, {raw: true});
+                    $.jStorage.set('username',username);
+                    $.jStorage.set('logintoken',data.loginToken);
+                    loadSite();
+                },
+             error: function(data){
+                    console.log('login error');
+                    $.cookie('token', null);
+                    $.jStorage.deleteKey('username');
+                    $.jStorage.deleteKey('logintoken');
+                    showLogin();
+                }
+                    
+            });
+    } else {
+        showLogin();
+    }
+}
+        
+function l_authenticate(username,password,remember) {
 
     var ts = Math.round((new Date()).getTime() / 1000);
     var auth = Sha1.hash(Sha1.hash(password) + ts);
     console.log(username + " " + password);
+    var authurl = 'http://core.lan/api/sessions'
+    if ($("#remcheck:checked").val()) {
+        authurl += '?rememberme=true'
+    }
     $.ajax({
         type: 'PUT', 
-        url: 'http://core.lan/api/sessions',
+        url: authurl,
         data: {
                 'username' : username,
                 'auth'     : auth,
@@ -61,6 +100,10 @@ function authenticate(username,password) {
         success: function(data){
             console.log('success');
             $.cookie('token',data.sessionToken, {raw: true});
+            if (data.loginToken) {
+                $.jStorage.set('username',username);
+                $.jStorage.set('logintoken',data.loginToken);
+            }    
             loadSite();
             }
         });
@@ -123,6 +166,7 @@ closeImgPreview             = function() {
                     });
 }
 
+
 kinetic_moving = false;
 isAnimating = false;
 minrow = 0;
@@ -138,7 +182,7 @@ pwidth = 202;
 pheight = 202;
 
 $(document).ready(function () {
-   showLogin(); 
+    r_authenticate(); 
 });
 
 function loadSite () {
