@@ -2,7 +2,7 @@
 $.template( "albumTemplate", '<a href="#"><span class="a">{{=albumArtistName}}</span><img src="{{=albumArtThumbUrl}}" /><span class="b">{{=albumTitle}}</span></a>');
 $.template( "contentWrapperTemplate", '<div id="content-preview" class="content-preview"><div id="content-wrapper"></div><span class="ib-close" style="display:none;">Close Preview</span></div>');
 $.template( "contentTemplate", '<a href="{{=albumM3UUrl}}"><img id="album-art" src="{{=albumArtUrl}}" /></a><div id="content-info"><h2>{{=albumTitle}}<span id="content-artist">{{=albumArtistName}}</span></h2><div id="content-songs" style="display:none;"></div></div>');
-$.template( "songTemplate", '<span class="song-track">{{=songTrack}}</span><span class="song-name">{{=songName}}</span>');
+$.template( "songTemplate", '<a id="playlink_{{=songID}}" href="#" title="Play" class="playsong"></a><span class="song-track">{{=songTrack}}</span><span class="song-name">{{=songName}}</span>');
 $.template( "loginTemplate", '<div id="login"><form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /><span id="rememberme"><input type="checkbox" name="remember" id="remcheck" title="Remember me" />Remember me</span></form></div>');
 
 seed = Math.round((new Date()).getTime() / 1000);
@@ -18,6 +18,8 @@ function loadAlbum(x,y) {
     });
 }
 
+playlist = new Array();
+
 function loadSongs(item) {
     
     var jsondata = item.data("json");
@@ -25,7 +27,11 @@ function loadSongs(item) {
         url: jsondata[0].albumSongsUrl,
         context: $("#content-songs"),
         success: function(data){
-            $(this).html( $.render( data, "songTemplate"));
+            $(this).empty();
+            for(var i = 0; i < data.length; i++) {
+                $(this).append( $.render( data[i], "songTemplate"));
+                $('#playlink_' + data[i].songID).data("json",data[i]);
+            }
             return false;
         }
     });
@@ -185,6 +191,21 @@ $(document).ready(function () {
     r_authenticate(); 
 });
 
+plCursor = 0;
+
+function playPlaylist () {
+    if (plCursor < playlist.length) {
+        soundManager.createSound('songplaying',playlist[plCursor].songUrl);
+        soundManager.play('songplaying',{
+            onfinish: function() {
+               soundManager.destroySound('songplaying');
+               plCursor++;
+               playPlaylist();
+            }
+        });
+    }
+}
+    
 function loadSite () {
     setWrapperSize();
     mincol = Math.ceil((maxcolumns - 1) / 2) * -1;
@@ -213,6 +234,12 @@ function loadSite () {
         if (!kinetic_moving ) {
             openItem ($(this) );
         }
+        return false;
+    });
+    $('#viewport').on('click','.playsong', function(e) {
+        e.preventDefault();
+        thisData = $(this).data('json');
+        playlist.push(thisData);
         return false;
     });
 

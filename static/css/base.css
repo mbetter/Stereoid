@@ -163,6 +163,12 @@ body {
     margin-right: 17px;
 }
 
+#content-songs a {
+    display: block;
+    font-size: 20px;
+    padding-top: 50px;
+}
+
 #content-songs {
     display: block;
     font-size: 20px;
