@@ -113,6 +113,7 @@ body {
 }
 
 #content-preview {
+    z-index: 1;
     background: #000;
     position: absolute;
     top: 44px;
@@ -170,13 +171,13 @@ body {
     right: -2px;
     bottom: 21px;
     background-color: #444444;
-    z-index: -1;
 }
 
 #nowplaying {
     width: 300px;
 }
 #np_np {
+    margin-top: 20px;
     color: #666666;
     font-size: 38px;
     margin-right: 40px;
@@ -193,6 +194,7 @@ body {
 .np_info {
     font-size: 17px;
     margin-right: 20px;
+    margin-left: 20px;
 }
 #nowplaying span {
     float: right;
@@ -236,6 +238,25 @@ body {
 
 }
 
+#np_progress {
+  border-color: #AAAAAA;
+  border-style: solid;
+  border-width: 1px;
+  height: 11px;
+  left: 53px;
+  position: relative;
+  top: -35px;
+  width: 200px;
+}
+#np_progress_fill {
+  background: none repeat scroll 0 0 #AAFF11;
+  height: 9px;
+  left: 1px;
+  position: relative;
+  top: 1px;
+  width: 0px;
+  /* width: 197px; */
+}
 #content {
 }
 #album-title {

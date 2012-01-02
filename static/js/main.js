@@ -3,11 +3,13 @@ $.template( "albumTemplate", '<a href="#"><span class="a">{{=albumArtistName}}</
 $.template( "contentWrapperTemplate", '<div id="content-preview" class="content-preview"><div id="content-wrapper"></div><span class="ib-close" style="display:none;">Close Preview</span></div>');
 $.template( "contentTemplate", '<a id="play-album" title="Play &ldquo;{{=albumTitle}}&rdquo; now" href="javascript:void(0)"><img id="album-art" src="{{=albumArtUrl}}" /></a><div id="content-info"><h2><a id="album-title" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)">{{=albumTitle}}</a><span id="content-artist">{{=albumArtistName}}</span></h2><div id="content-songs" style="display:none;"></div></div>');
 $.template( "songTemplate", '<span class="song-track">{{=songTrack}}</span><a id="playlink_{{=songID}}" href="javascript:void(0)" title="Add &ldquo;{{=songName}}&rdquo; to playlist" class="playsong"><span class="song-name">{{=songName}}</span></a>');
-$.template( "nowPlayingTemplate", '<div id="nowplaying"><span id="np_np">now playing</span><a id="np_handle"></a><img id="np_albumart" src="{{=songAlbumArtUrl}}" /><span class ="np_info" id="np_title">{{=songName}}</span><span class ="np_info" id="np_artist">{{=songArtistName}}</span><span class ="np_info" id="np_album">{{=songAlbumTitle}}</span></div>');
+$.template( "nowPlayingTemplate", '<div id="nowplaying"><span id="np_np">now playing</span><a id="np_handle"></a><img id="np_albumart" src="{{=songAlbumArtUrl}}" /><div id="np_progress"><div id="np_progress_fill"></div></div><span class ="np_info" id="np_title">{{=songName}}</span><span class ="np_info" id="np_artist">{{=songArtistName}}</span><span class ="np_info" id="np_album">{{=songAlbumTitle}}</span></div>');
 $.template( "loginTemplate", '<div id="login"><form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /><span id="rememberme"><input type="checkbox" name="remember" id="remcheck" title="Remember me" />Remember me</span></form></div>');
 $.template( "controlTemplate", '<div id="player-controls"><a id="pc-prev" href="javascript:void(0)"></a><a id="pc-play" href="javascript:void(0)"></a><a id="pc-pause" href="javascript:void(0)"></a><a id="pc-stop" href="javascript:void(0)"></a><a id="pc-next" href="javascript:void(0)"></a></div>');
 
+updating_session = false;
 seed = Math.round((new Date()).getTime() / 1000);
+
 function loadAlbum(x,y) {
     $.ajax({
         url: "http://core.lan/api/albums?sort=random&seed=" + seed + "&limit=1&offset=" + rose(x,y),
@@ -16,6 +18,22 @@ function loadAlbum(x,y) {
             var item = $(this);
             item.html( $.render( data, "albumTemplate"));
             item.data("json",data);
+        },
+        error: function(data){
+            if (!updating_session) {
+                updating_session = true;
+                if (g_authenticate) {
+                    updating_session = false;
+                    loadAlbum(x,y);
+                } else {
+                    updating_session = false;
+                    showLogin();
+                }
+            } else {
+                while (updating_session){}
+                loadAlbum(x,y);
+            }
+            
         }
     });
 }
@@ -61,6 +79,38 @@ function showLogin () {
             } );
 }
 
+function g_authenticate() {
+    var username = $.jStorage.get('username',false);
+    var logintoken = $.jStorage.get('logintoken',false);
+
+    if (username && logintoken) {
+        $.ajax({
+            type: 'PUT', 
+            url: 'http://core.lan/api/sessions',
+            data: {
+                    'username'   : username,
+                    'logintoken' : logintoken
+                   },
+            success: function(data){
+                    console.log('login success');
+                    $.cookie('token',data.sessionToken, {raw: true});
+                    $.jStorage.set('username',username);
+                    $.jStorage.set('logintoken',data.loginToken);
+                    return true;
+                },
+             error: function(data){
+                    console.log('login error');
+                    $.cookie('token', null);
+                    $.jStorage.deleteKey('username');
+                    $.jStorage.deleteKey('logintoken');
+                    return false;
+                }
+                    
+            });
+    } else {
+        return false;
+    }
+}
 function r_authenticate() {
     var username = $.jStorage.get('username',false);
     var logintoken = $.jStorage.get('logintoken',false);
@@ -212,6 +262,9 @@ function playPlaylist () {
                     plCursor ++;
                     playPlaylist();
                }
+            },
+            whileplaying: function() {
+                $('#np_progress_fill').css('width',(this.position / this.durationEstimate) * 197);
             }
         });
     }
@@ -333,7 +386,14 @@ function loadSite () {
         e.preventDefault();
         playPlaylist();
     });
-
+    $('#rightbar').on('click','#np_progress', function(event) {
+        var off = $(this).offset();
+        var offX = event.pageX - off.left;
+        if ((offX >= 3) && (offX <= 197)) {
+            var newPos = (offX / 197) * soundManager.getSoundById('songplaying').durationEstimate;
+            soundManager.setPosition('songplaying',newPos);
+        }
+    });
     $("#album-div").css('width', cwidth);
     loadKinetic();
      
