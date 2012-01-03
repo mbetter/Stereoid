@@ -7,8 +7,23 @@ $.template( "nowPlayingTemplate", '<div id="nowplaying"><span id="np_np">now pla
 $.template( "loginTemplate", '<div id="login"><form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /><span id="rememberme"><input type="checkbox" name="remember" id="remcheck" title="Remember me" />Remember me</span></form></div>');
 $.template( "controlTemplate", '<div id="player-controls"><a id="pc-prev" href="javascript:void(0)"></a><a id="pc-play" href="javascript:void(0)"></a><a id="pc-pause" href="javascript:void(0)"></a><a id="pc-stop" href="javascript:void(0)"></a><a id="pc-next" href="javascript:void(0)"></a></div>');
 
+session_timeout = 14 * 60 * 1000;
 updating_session = false;
 seed = Math.round((new Date()).getTime() / 1000);
+var t;
+
+function keepSessionAlive () {
+    $.ajax({
+        url: "http://core.lan/api/sessions",
+        success: function(data){
+            t=setTimeout("keepSessionAlive()",session_timeout);
+        },
+        error: function(data){
+            clearTimeout(t);
+            showLogin();
+        }
+    });
+}
 
 function loadAlbum(x,y) {
     $.ajax({
@@ -18,7 +33,8 @@ function loadAlbum(x,y) {
             var item = $(this);
             item.html( $.render( data, "albumTemplate"));
             item.data("json",data);
-        },
+        }
+        /*
         error: function(data){
             if (!updating_session) {
                 updating_session = true;
@@ -34,7 +50,7 @@ function loadAlbum(x,y) {
                 loadAlbum(x,y);
             }
             
-        }
+        }*/
     });
 }
 
@@ -293,6 +309,7 @@ function nextPlaylist () {
 }    
     
 function loadSite () {
+    keepSessionAlive();
     setWrapperSize();
     mincol = Math.ceil((maxcolumns - 1) / 2) * -1;
     maxcol = (maxcolumns - 1) + mincol;

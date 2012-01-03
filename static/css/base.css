@@ -167,14 +167,15 @@ body {
 #rightbar {
     display: block;
     position: absolute;
-    top: 79px;
+    top: 78px;
     right: -2px;
-    bottom: 21px;
+    bottom: 22px;
     background-color: #444444;
 }
 
 #nowplaying {
     width: 300px;
+    height: 100%;
 }
 #np_np {
     margin-top: 20px;

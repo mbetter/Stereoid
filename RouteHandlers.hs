@@ -61,6 +61,7 @@ route sdb users sessions url =
                     (AlbumM3U albumId)      -> chk $ albumSongsM3U sdb albumId
                     (AlbumArt albumId)      -> chk $ serveArt sdb albumId
                     (AlbumArtThumb albumId) -> chk $ serveThumb sdb albumId
+                    (Sessions)              -> chk $ ok (toResponse "Session extended.")
              PUT -> case url of
                     (Users)                 -> addUser users
                     (Sessions)              -> authorize users sessions
