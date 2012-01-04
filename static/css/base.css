@@ -114,7 +114,6 @@ body {
 
 #content-preview {
     z-index: 1;
-    background: #000;
     position: absolute;
     top: 44px;
     left: 0px;
@@ -128,9 +127,15 @@ body {
 #album-art {
     float: left;
     display: block;
-    min-height: 100%;
-    max-height: 100%;
-    max-width: 50%;
+    height: 100%;
+    width: 100%;
+/*    max-width: 50%; */
+}
+#content-bg {
+    opacity: 0.9;
+    position: fixed;
+    z-index: -1;
+    background-color: #000000;
 }
 
 .ib-close{
@@ -261,9 +266,29 @@ body {
 #content {
 }
 #album-title {
+    position: relative;
+    top: -20px;
     color: #FFFFFF;
     text-decoration: none;
+    display: block;
 }
+
+#content-artist {
+    font-family: Georgia,serif;
+    font-size: 35px;
+    line-height: 61px;
+    font-style: italic;
+    text-align: right;
+    text-transform: none;
+    position: relative;
+    top: 411px;
+}
+
+#album-info {
+    position: fixed;
+    text-align: center;
+}
+
 #album-title:hover {
     color: #AAAAAA;
 }
@@ -296,15 +321,6 @@ body {
     margin-left: 50px;
     min-width: 45%;
     max-width: 50%;
-}
-
-#content-artist {
-    font-family: Georgia,serif;
-    font-size: 35px;
-    line-height: 61px;
-    font-style: italic;
-    text-align: right;
-    text-transform: none;
 }
 
 #topbar {
