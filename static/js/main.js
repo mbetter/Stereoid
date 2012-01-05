@@ -196,18 +196,25 @@ function openItem($item) {
 
 function sizeContent() {
     var vp = $('#viewport');
+    var vpX = vp.outerWidth(true)
+    var vpY = vp.outerHeight(true)
+    var xBlk = (vpX - (pwidth * 2)) / 2;
+    var yBlk = pheight * 2;
+    var yGap = (vpY - yBlk) / 2;
+    var midX = vpX / 2;
+    var midY = vpY / 2;
     $("#content-preview").css({
         width   :   pwidth * 2,
         height  :   pheight * 2, 
-        left    :   (vp.outerWidth(true) / 2) - pwidth,
-        top     :   vp.offset().top + (vp.outerHeight(true) / 2) - pheight
+        left    :   vp.offset().left,
+        top     :   vp.offset().top
     }); 
     var aa = $('#content-preview'); 
     $('#album-info').css({
         'height'    :   aa.outerHeight(true),
-        'width'     :   vp.outerWidth(true), 
+        'width'     :   vpX, 
         'left'      :   0,
-        'top'       :   aa.offset().top
+        'top'       :   vp.offset().top
     });
     $('#content-bg').css({
         'height'    :   vp.outerHeight(true),
@@ -215,6 +222,26 @@ function sizeContent() {
         'left'      :   vp.offset().left,
         'top'       :   vp.offset().top,
     });
+        $('#info-top').css({
+            'width'     :   '100%',
+            'display'   :   'block',
+            'height'    :   yGap
+        });
+        $('#info-bottom').css({
+            'width'     :   '100%',
+            'display'   :   'block',
+            'height'    :   yGap
+        });
+        $('#info-left').css({
+            'height'    :   yBlk,
+            'display'   :   'block',
+            'width'     :   xBlk
+        });
+        $('#info-right').css({
+            'height'    :   yBlk,
+            'display'   :   'block',
+            'width'     :   xBlk
+        });
 }
 
 loadContentItem = function ( $item , callback) {
