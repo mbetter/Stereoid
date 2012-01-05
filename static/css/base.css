@@ -115,13 +115,11 @@ body {
 #content-preview {
     z-index: 1;
     position: absolute;
-    top: 44px;
-    left: 0px;
-    width: 100%;
     display: none;
 }
 #content-wrapper {
     height: 100%;
+    width: 100%;
 }
 
 #album-art {
@@ -129,6 +127,7 @@ body {
     display: block;
     height: 100%;
     width: 100%;
+    z-index: 3;
 /*    max-width: 50%; */
 }
 #content-bg {
@@ -136,23 +135,6 @@ body {
     position: fixed;
     z-index: -1;
     background-color: #000000;
-}
-
-.ib-close{
-    top: -30px;
-    right: 7px;
-    background: transparent url(../img/close.png) no-repeat center center;
-    position: absolute;
-    width: 24px;
-    height: 24px;
-    cursor: pointer;
-    opacity: 0.2;
-    z-index: 999;
-    text-indent: -9000px;
-}
-
-.ib-close:hover {
-    opacity: 1;
 }
 
 .song-track {
@@ -263,11 +245,7 @@ body {
   width: 0px;
   /* width: 197px; */
 }
-#content {
-}
 #album-title {
-    position: relative;
-    top: -20px;
     color: #FFFFFF;
     text-decoration: none;
     display: block;
@@ -278,16 +256,42 @@ body {
     font-size: 35px;
     line-height: 61px;
     font-style: italic;
-    text-align: right;
     text-transform: none;
-    position: relative;
-    top: 411px;
 }
 
+#play-album {
+    display: block;
+}
 #album-info {
-    position: fixed;
+ /*   position: fixed;*/
+    height: 100%;
+    width: 100%;
+    display: block;
     text-align: center;
 }
+#info-top {
+    display: none;
+    float: left;
+}
+#info-left {
+    display: none;
+    float: left;
+    clear: left;
+}
+#info-mid {
+    display: block;
+    float: left;
+}
+#info-right {
+    display: none;
+    float: left;
+}
+#info-bottom {
+    display: none;
+    float: left;
+    clear: left;
+}
+
 
 #album-title:hover {
     color: #AAAAAA;
@@ -303,24 +307,6 @@ body {
     display: block;
     font-size: 20px;
     padding-top: 50px;
-}
-
-#content-info h2 {
-    float: right;
-    font-size: 48px;
-    line-height: 57px;
-    text-align: right;
-}
-
-#content-info span {
-    display: block;
-}
-
-#content-info {
-    float: left;
-    margin-left: 50px;
-    min-width: 45%;
-    max-width: 50%;
 }
 
 #topbar {

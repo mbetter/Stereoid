@@ -1,10 +1,12 @@
 /* Compile markup as named templates */
 $.template( "albumTemplate", '<a href="#"><span class="a">{{=albumArtistName}}</span><img src="{{=albumArtThumbUrl}}" /><span class="b">{{=albumTitle}}</span></a>');
-$.template( "contentWrapperTemplate", '<div id="content-preview" class="content-preview"><div id="content-wrapper"></div><div id="album-info"></div><div id="content-bg" style="display:none;">></div></div>');
+$.template( "contentWrapperTemplate", '<div id="content-preview" class="content-preview"><div id="content-wrapper"></div><div id="content-bg" style="display:none;">></div></div>');
 $.template( "infoTemplate", '<h2><a id="album-title" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)">{{=albumTitle}}</a><span id="content-artist">{{=albumArtistName}}</span></h2>');
 //$.template( "contentTemplate", '<a id="play-album" title="Play &ldquo;{{=albumTitle}}&rdquo; now" href="javascript:void(0)"><img id="album-art" src="{{=albumArtUrl}}" /></a><div id="content-info"><h2><a id="album-title" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)">{{=albumTitle}}</a><span id="content-artist">{{=albumArtistName}}</span></h2><div id="content-songs" style="display:none;"></div></div>');
-$.template( "contentTemplate", '<a id="play-album" title="Play &ldquo;{{=albumTitle}}&rdquo; now" href="javascript:void(0)"><img id="album-art" src="{{=albumArtUrl}}" /></a><span class="ib-close" style="display:none;">Close Preview</span>');
+$.template( "contentTemplate", '<div id="album-info"><div id="info-top"><a id="album-title" class="album-text" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)" style="display:none;">{{=albumTitle}}</a></div><div id="info-left"></div><div id="info-mid"><a id="play-album" title="Play &ldquo;{{=albumTitle}}&rdquo; now" href="javascript:void(0)"><img id="album-art" src="{{=albumArtUrl}}" /></a></div><div id="info-right"></div><div id="info-bottom"><span id="content-artist" class="album-text" style="display:none;">{{=albumArtistName}}</span></div></div>');
+//$.template( "contentTemplate", '<div id="album-info"><h2><a id="album-title" class="album-text" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)" style="display:none;">{{=albumTitle}}</a><span id="content-artist" class="album-text" style="display:none;">{{=albumArtistName}}</span></h2><a id="play-album" title="Play &ldquo;{{=albumTitle}}&rdquo; now" href="javascript:void(0)"><img id="album-art" src="{{=albumArtUrl}}" /></a></div>');
 $.template( "songTemplate", '<span class="song-track">{{=songTrack}}</span><a id="playlink_{{=songID}}" href="javascript:void(0)" title="Add &ldquo;{{=songName}}&rdquo; to playlist" class="playsong"><span class="song-name">{{=songName}}</span></a>');
+$.template( "sideSongsTemplate", '<div id="nowplaying"><div id="content-songs"></div></div>');
 $.template( "nowPlayingTemplate", '<div id="nowplaying"><span id="np_np">now playing</span><a id="np_handle"></a><img id="np_albumart" src="{{=songAlbumArtUrl}}" /><div id="np_progress"><div id="np_progress_fill"></div></div><span class ="np_info" id="np_title">{{=songName}}</span><span class ="np_info" id="np_artist">{{=songArtistName}}</span><span class ="np_info" id="np_album">{{=songAlbumTitle}}</span></div>');
 $.template( "loginTemplate", '<div id="login"><form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /><span id="rememberme"><input type="checkbox" name="remember" id="remcheck" title="Remember me" />Remember me</span></form></div>');
 $.template( "controlTemplate", '<div id="player-controls"><a id="pc-prev" href="javascript:void(0)"></a><a id="pc-play" href="javascript:void(0)"></a><a id="pc-pause" href="javascript:void(0)"></a><a id="pc-stop" href="javascript:void(0)"></a><a id="pc-next" href="javascript:void(0)"></a></div>');
@@ -66,10 +68,12 @@ function updateNowPlaying(song) {
 function loadSongs(item) {
     
     var jsondata = item.data("json");
+    $('#rightbar').html( $.render( {}, "sideSongsTemplate"));
     $.ajax({
         url: jsondata[0].albumSongsUrl,
         context: $("#content-songs"),
         success: function(data){
+            console.log("songs loaded");
             $(this).empty();
             $('#album-title').data("json",data);
             for(var i = 0; i < data.length; i++) {
@@ -190,6 +194,28 @@ function openItem($item) {
     loadContentItem ($item, function () { isAnimating = false; });
 }
 
+function sizeContent() {
+    var vp = $('#viewport');
+    $("#content-preview").css({
+        width   :   pwidth * 2,
+        height  :   pheight * 2, 
+        left    :   (vp.outerWidth(true) / 2) - pwidth,
+        top     :   vp.offset().top + (vp.outerHeight(true) / 2) - pheight
+    }); 
+    var aa = $('#content-preview'); 
+    $('#album-info').css({
+        'height'    :   aa.outerHeight(true),
+        'width'     :   vp.outerWidth(true), 
+        'left'      :   0,
+        'top'       :   aa.offset().top
+    });
+    $('#content-bg').css({
+        'height'    :   vp.outerHeight(true),
+        'width'     :   vp.outerWidth(true), 
+        'left'      :   vp.offset().left,
+        'top'       :   vp.offset().top,
+    });
+}
 
 loadContentItem = function ( $item , callback) {
     var hasContentPreview   = ( $('#content-preview').length > 0 );
@@ -201,63 +227,96 @@ loadContentItem = function ( $item , callback) {
     var oldT = $item.offset().top;
     var newL;
     var newT;
-    var midX = $('#viewport').outerWidth(true) / 2;
-    var midY = $('#viewport').outerHeight(true) / 2;
+    var vpX = $('#viewport').outerWidth(true)
+    var vpY = $('#viewport').outerHeight(true)
+    var xBlk = (vpX - (pwidth * 2)) / 2;
+    var yBlk = pheight * 2;
+    var yGap = (vpY - yBlk) / 2;
+    var midX = vpX / 2;
+    var midY = vpY / 2;
     
     if ((oldL + (.5 * pwidth)) < midX) {
         newL = oldL;
-    } else {
-        newL = oldL - pwidth;
-    }
+    } else { newL = oldL - pwidth; }
         
     if ((oldT - $('#topbar').outerHeight(true) + (.5 * pheight)) < midY) {
         newT = oldT;
-    } else {
-        newT = oldT - pheight;
-    }
+    } else { newT = oldT - pheight; }
 
-        var vp = $('#viewport');
+    var vp = $('#viewport');
 
-        $("#content-wrapper").html( $.render( jsondata[0], "contentTemplate"));
-        $("#album-info").html( $.render( jsondata[0], "infoTemplate"));
-        // loadSongs($item);
-        $("#content-preview").css({
-            width   :   $item.width(),
-            height  :   $item.height(),
-            left    :   oldL,
-            top     :   oldT
-        }).show().animate({
-            width   :   pwidth * 2,
-            height  :   pheight * 2, 
-            left    :   (vp.outerWidth(true) / 2) - pwidth,
-            top     :   vp.offset().top + (vp.outerHeight(true) / 2) - pheight
-            //left    :   0
+    $("#content-wrapper").html( $.render( jsondata[0], "contentTemplate"));
+    //$("#album-info").html( $.render( jsondata[0], "infoTemplate"));
+    loadSongs($item);
+    $('#album-art').animate({
+            'width'     :   pwidth * 2,
+            'height'    :   pheight * 2
+    }, 300, 'easeOutQuad');
+    
+    $("#content-preview").css({
+        width   :   $item.width(),
+        height  :   $item.height(),
+        left    :   oldL,
+        top     :   oldT
+    }).show().animate({
+        width   :   pwidth * 2,
+        height  :   pheight * 2, 
+        left    :   (vp.outerWidth(true) / 2) - pwidth,
+        top     :   vp.offset().top + (vp.outerHeight(true) / 2) - pheight
+    }, 300, 'easeOutQuad', function() {
+        var aa = $('#content-preview'); 
+        $('#album-art').click(playAlbum).css({
+            'width'     :   pwidth * 2,
+            'height'    :   pheight * 2
+         /*   'position'  :   'absolute',
+            'left'      :   aa.offset().left*/
+        });
+        // $('#album-info').css('position','fixed');
+        $('.album-text').show();
+        $('#content-preview').click(closeImgPreview).css({
+            'height'    :   aa.outerHeight(true),
+            'width'     :   vp.outerWidth(true), 
+            'left'      :   0,
+            'top'       :   vp.offset().top
+        });
+        $('#info-top').css({
+            'width'     :   '100%',
+            'display'   :   'block',
+            'height'    :   yGap
+        });
+        $('#info-bottom').css({
+            'width'     :   '100%',
+            'display'   :   'block',
+            'height'    :   yGap
+        });
+        $('#info-left').css({
+            'height'    :   yBlk,
+            'display'   :   'block',
+            'width'     :   xBlk
+        });
+        $('#info-right').css({
+            'height'    :   yBlk,
+            'display'   :   'block',
+            'width'     :   xBlk
+        });
+
+     }).click(false);
+        vp = $('#viewport');
+        $('#content-bg').css({
+            'height'    :   vp.outerHeight(true),
+            'width'     :   vp.outerWidth(true), 
+            'left'      :   vp.offset().left,
+            'top'       :   vp.offset().top,
+            'opacity'   :   0
+        })
+
+        $('#content-bg').show().click(closeImgPreview).animate({
+            opacity: 0.8
         }, 300, 'easeOutQuad', function() {
-            var aa = $('#content-preview'); 
-            $('#album-info').css({
-                'height'    :   $('#content-preview').outerHeight(true),
-                'width'     :   $('#content-preview').outerWidth(true), 
-                'left'      :   $('#content-preview').offset().left,
-                'top'       :   $('#content-preview').offset().top
-            });
-            $('#content-artist').css('bottom',aa.outerHeight(true));
-         });
-            vp = $('#viewport');
-            $('#content-bg').css({
-                'height'    :   vp.outerHeight(true),
-                'width'     :   vp.outerWidth(true), 
-                'left'      :   vp.offset().left,
-                'top'       :   vp.offset().top,
-                'opacity'   :   0
-            })
-
-            $('#content-bg').show().click(closeImgPreview).animate({
-                opacity: 0.8
-            }, 300, 'easeOutQuad', function() {
-                //$('span.ib-close').show().click( closeImgPreview );
-                $('#content-songs').show();
-                if (callback) callback.call();
-            });
+            //$('span.ib-close').show().click( closeImgPreview );
+            $('#content-songs').show();
+            if (callback) callback.call();
+        });
 } 
 
     
@@ -269,21 +328,18 @@ closeImgPreview             = function() {
     var $item   = current;
 
     $('#content-songs').hide(); 
-    $('#content-preview').find('span.ib-close')
-                    .hide()
-                    .end()
-                    .animate({
+    $('.album-text').hide();
+    $('#info-top,#info-left,#info-right,#info-bottom').hide();
+    $('#album-art').animate({
                         height  : $item.height()+1,
+                        width   : $item.width(),
+                        left    : $item.offset().left,
                         top     : $item.offset().top+1
-                        }, 500, 'easeOutExpo', function() {
-                        $('#album-art').css('max-width','100%')
+                        }, 5000, 'easeOutQuad', function() {
                         $('#content-info').fadeOut();
                         $(this).animate({
-                            width   : $item.width(),
-                            left    : $item.offset().left
                             }, 400, function() {
                                 $(this).fadeOut(function() {
-                                    $('#album-art').css('max-width','');
                                     isAnimating = false;});
                         } );
                     });
@@ -350,7 +406,24 @@ function nextPlaylist () {
        playPlaylist();
    }
 }    
-    
+function playAlbum (e) {
+        e.preventDefault();
+        console.log('k');
+        if (playlist.length == 0) {
+            $('#topbar').html($.render({},"controlTemplate"));
+        }
+        stopPlaylist();
+        playlist = [];
+        plCursor = 0;
+        var thisData = $('#album-title').data('json');
+        var artUrl = $('#album-art').attr('src');
+        for(var i = 0; i < thisData.length; i++) {
+            thisData[i].songAlbumArtUrl = artUrl;
+            playlist.push(thisData[i]);
+        }
+        playPlaylist();
+        return false;
+}    
 function loadSite () {
     keepSessionAlive();
     $('#rightbar').html( $.render( {}, "nowPlayingTemplate"));
@@ -370,10 +443,7 @@ function loadSite () {
     cwidth = pwidth * ((maxcol - mincol) + 1);
     $(window).resize(function() {
         setWrapperSize();
-        $('#content-preview').css({
-            width   :   $(window).width(),
-            height  :   $(window).height() - $("#bottombar").outerHeight(true) - $("#topbar").outerHeight(true) 
-        }); 
+        sizeContent();
     });
     
     $('#album-div').on('click','.album', function() {
@@ -396,24 +466,10 @@ function loadSite () {
         }
         return false;
     });
-    $('#viewport').on('click','#play-album', function(e) {
-        e.preventDefault();
-        if (playlist.length == 0) {
-            $('#topbar').html($.render({},"controlTemplate"));
-        }
-        stopPlaylist();
-        playlist = [];
-        plCursor = 0;
-        var thisData = $('#album-title').data('json');
-        var artUrl = $('#album-art').attr('src');
-        for(var i = 0; i < thisData.length; i++) {
-            thisData[i].songAlbumArtUrl = artUrl;
-            playlist.push(thisData[i]);
-        }
-        playPlaylist();
-        return false;
+    $(window).click( function () {
+        console.log("testing");
     });
-    $('#viewport').on('click','.playsong', function(e) {
+    $('#rightbar').on('click','.playsong', function(e) {
         e.preventDefault();
         var thisData = $(this).data('json');
         thisData.songAlbumArtUrl = $('#album-art').attr('src');    // dirty hack - need to add album art url to json on server side 
