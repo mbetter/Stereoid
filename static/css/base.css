@@ -138,17 +138,18 @@ body {
 }
 
 .song-track {
-    clear: right;
-    float: right;
+    clear: left;
+    float: left;
     position: relative;
+    margin-left: 10px;
     width: 20px;
     color: #7d7d7d;
 }
 
 .song-name {
     display: block;
-    float: right;
-    margin-right: 17px;
+    float: left;
+    width: 245px;
 }
 
 #rightbar {
@@ -158,6 +159,14 @@ body {
     right: -2px;
     bottom: 22px;
     background-color: #444444;
+}
+
+#content-songs {
+    width: 300px;
+    height: 100%;
+    display: block;
+    font-size: 18px;
+    padding-top: 50px;
 }
 
 #nowplaying {
@@ -246,17 +255,21 @@ body {
   /* width: 197px; */
 }
 #album-title {
+    font-size: 33px;
+    line-height: 33px;
     color: #FFFFFF;
     text-decoration: none;
     display: block;
+    margin-bottom: 10px;
 }
 
 #content-artist {
-    font-family: Georgia,serif;
-    font-size: 35px;
-    line-height: 61px;
-    font-style: italic;
-    text-transform: none;
+    font-size: 33px;
+    line-height: 33px;
+    color: #FFFFFF;
+    text-decoration: none;
+    display: block;
+    margin-top: 10px;
 }
 
 #play-album {
@@ -301,12 +314,6 @@ body {
 }
 #content-songs a:hover {
     color: #AAAAAA;
-}
-
-#content-songs {
-    display: block;
-    font-size: 20px;
-    padding-top: 50px;
 }
 
 #topbar {

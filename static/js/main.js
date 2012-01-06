@@ -1,13 +1,13 @@
 /* Compile markup as named templates */
 $.template( "albumTemplate", '<a href="#"><span class="a">{{=albumArtistName}}</span><img src="{{=albumArtThumbUrl}}" /><span class="b">{{=albumTitle}}</span></a>');
-$.template( "contentWrapperTemplate", '<div id="content-preview" class="content-preview"><div id="content-wrapper"></div><div id="content-bg" style="display:none;">></div></div>');
+$.template( "contentWrapperTemplate", '<div id="content-preview" class="content-preview"><div id="content-wrapper"></div><div id="content-bg" style="display:none;"></div></div>');
 $.template( "infoTemplate", '<h2><a id="album-title" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)">{{=albumTitle}}</a><span id="content-artist">{{=albumArtistName}}</span></h2>');
 //$.template( "contentTemplate", '<a id="play-album" title="Play &ldquo;{{=albumTitle}}&rdquo; now" href="javascript:void(0)"><img id="album-art" src="{{=albumArtUrl}}" /></a><div id="content-info"><h2><a id="album-title" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)">{{=albumTitle}}</a><span id="content-artist">{{=albumArtistName}}</span></h2><div id="content-songs" style="display:none;"></div></div>');
 $.template( "contentTemplate", '<div id="album-info"><div id="info-top"><a id="album-title" class="album-text" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)" style="display:none;">{{=albumTitle}}</a></div><div id="info-left"></div><div id="info-mid"><a id="play-album" title="Play &ldquo;{{=albumTitle}}&rdquo; now" href="javascript:void(0)"><img id="album-art" src="{{=albumArtUrl}}" /></a></div><div id="info-right"></div><div id="info-bottom"><span id="content-artist" class="album-text" style="display:none;">{{=albumArtistName}}</span></div></div>');
 //$.template( "contentTemplate", '<div id="album-info"><h2><a id="album-title" class="album-text" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)" style="display:none;">{{=albumTitle}}</a><span id="content-artist" class="album-text" style="display:none;">{{=albumArtistName}}</span></h2><a id="play-album" title="Play &ldquo;{{=albumTitle}}&rdquo; now" href="javascript:void(0)"><img id="album-art" src="{{=albumArtUrl}}" /></a></div>');
 $.template( "songTemplate", '<span class="song-track">{{=songTrack}}</span><a id="playlink_{{=songID}}" href="javascript:void(0)" title="Add &ldquo;{{=songName}}&rdquo; to playlist" class="playsong"><span class="song-name">{{=songName}}</span></a>');
-$.template( "sideSongsTemplate", '<div id="nowplaying"><div id="content-songs"></div></div>');
-$.template( "nowPlayingTemplate", '<div id="nowplaying"><span id="np_np">now playing</span><a id="np_handle"></a><img id="np_albumart" src="{{=songAlbumArtUrl}}" /><div id="np_progress"><div id="np_progress_fill"></div></div><span class ="np_info" id="np_title">{{=songName}}</span><span class ="np_info" id="np_artist">{{=songArtistName}}</span><span class ="np_info" id="np_album">{{=songAlbumTitle}}</span></div>');
+$.template( "sideSongsTemplate", '<div id="content-songs"></div>');
+$.template( "nowPlayingTemplate", '<div id="nowplaying"><span id="np_np">now playing</span><div class="sidebar-content"><a id="np_handle"></a><img id="np_albumart" src="{{=songAlbumArtUrl}}" /><div id="np_progress"><div id="np_progress_fill"></div></div><span class ="np_info" id="np_title">{{=songName}}</span><span class ="np_info" id="np_artist">{{=songArtistName}}</span><span class ="np_info" id="np_album">{{=songAlbumTitle}}</span></div></div>');
 $.template( "loginTemplate", '<div id="login"><form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /><span id="rememberme"><input type="checkbox" name="remember" id="remcheck" title="Remember me" />Remember me</span></form></div>');
 $.template( "controlTemplate", '<div id="player-controls"><a id="pc-prev" href="javascript:void(0)"></a><a id="pc-play" href="javascript:void(0)"></a><a id="pc-pause" href="javascript:void(0)"></a><a id="pc-stop" href="javascript:void(0)"></a><a id="pc-next" href="javascript:void(0)"></a></div>');
 
@@ -227,6 +227,9 @@ function sizeContent() {
             'display'   :   'block',
             'height'    :   yGap
         });
+        $('#album-title').css({
+            'margin-top'    :   yGap - 10 - $('#album-title').height()
+        });
         $('#info-bottom').css({
             'width'     :   '100%',
             'display'   :   'block',
@@ -271,16 +274,13 @@ loadContentItem = function ( $item , callback) {
     } else { newT = oldT - pheight; }
 
     var vp = $('#viewport');
+    vp.unbind().css('cursor','auto');
 
     $("#content-wrapper").html( $.render( jsondata[0], "contentTemplate"));
     //$("#album-info").html( $.render( jsondata[0], "infoTemplate"));
     loadSongs($item);
-    $('#album-art').animate({
-            'width'     :   pwidth * 2,
-            'height'    :   pheight * 2
-    }, 300, 'easeOutQuad');
     
-    $("#content-preview").css({
+    $("#content-preview,#album-art").css({
         width   :   $item.width(),
         height  :   $item.height(),
         left    :   oldL,
@@ -310,6 +310,9 @@ loadContentItem = function ( $item , callback) {
             'width'     :   '100%',
             'display'   :   'block',
             'height'    :   yGap
+        });
+        $('#album-title').css({
+            'margin-top'    :   yGap - 10 - $('#album-title').height()
         });
         $('#info-bottom').css({
             'width'     :   '100%',
@@ -353,16 +356,21 @@ closeImgPreview             = function() {
     isAnimating = true;
 
     var $item   = current;
-
+    var vp = $('#viewport');
     $('#content-songs').hide(); 
     $('.album-text').hide();
     $('#info-top,#info-left,#info-right,#info-bottom').hide();
-    $('#album-art').animate({
+    $('#content-preview,#album-art').css({
+        width   :   pwidth * 2,
+        height  :   pheight * 2, 
+        left    :   (vp.outerWidth(true) / 2) - pwidth,
+        top     :   vp.offset().top + (vp.outerHeight(true) / 2) - pheight
+     }).animate({
                         height  : $item.height()+1,
                         width   : $item.width(),
                         left    : $item.offset().left,
                         top     : $item.offset().top+1
-                        }, 5000, 'easeOutQuad', function() {
+                        }, 300, 'easeOutQuad', function() {
                         $('#content-info').fadeOut();
                         $(this).animate({
                             }, 400, function() {
@@ -370,6 +378,8 @@ closeImgPreview             = function() {
                                     isAnimating = false;});
                         } );
                     });
+    loadKinetic();
+    addScrollEvents();
 }
 
 
@@ -435,7 +445,6 @@ function nextPlaylist () {
 }    
 function playAlbum (e) {
         e.preventDefault();
-        console.log('k');
         if (playlist.length == 0) {
             $('#topbar').html($.render({},"controlTemplate"));
         }
@@ -448,6 +457,7 @@ function playAlbum (e) {
             thisData[i].songAlbumArtUrl = artUrl;
             playlist.push(thisData[i]);
         }
+        closeImgPreview();
         playPlaylist();
         return false;
 }    
@@ -540,9 +550,14 @@ function loadSite () {
     });
     $("#album-div").css('width', cwidth);
     loadKinetic();
-     
+    addScrollEvents(); 
     $("#viewport").scrollTo( { top:"+=606", left:"+=606"}, 0, $.scrollTo.defaults);
     //$("#viewport").scrollTo("20%", 0, $.scrollTo.defaults);
+    for(i=i;i<=maxrows;i++) {
+        setWrapperSize();
+    }
+}
+function addScrollEvents(){
     $("#viewport").scroll(function () {
        var vp = $("#viewport");
        var ad = $("#album-div");
@@ -582,9 +597,7 @@ function loadSite () {
        }
 
     });
-    for(i=i;i<=maxrows;i++) {
-        setWrapperSize();
-    }
+
 }
 
 function createPlaceholder (x,y) {
