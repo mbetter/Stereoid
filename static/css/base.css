@@ -120,6 +120,7 @@ body {
 #content-wrapper {
     height: 100%;
     width: 100%;
+    overflow: hidden;
 }
 
 #album-art {
@@ -142,14 +143,15 @@ body {
     float: left;
     position: relative;
     margin-left: 10px;
-    width: 20px;
+    width: 14px;
     color: #7d7d7d;
 }
 
 .song-name {
     display: block;
     float: left;
-    width: 245px;
+    width: 255px;
+    margin-left: 10px;
 }
 
 #rightbar {
@@ -159,26 +161,25 @@ body {
     right: -2px;
     bottom: 22px;
     background-color: #444444;
+    text-align: center;
+    overflow: hidden;
 }
 
-#content-songs {
+#songs-songs {
+    text-align: left;
     width: 300px;
     height: 100%;
     display: block;
     font-size: 18px;
-    padding-top: 50px;
 }
 
 #nowplaying {
     width: 300px;
-    height: 100%;
 }
-#np_np {
+.sidebar-header {
     margin-top: 20px;
     color: #666666;
     font-size: 38px;
-    margin-right: 40px;
-
 }
 #np_artist {
 }
@@ -187,21 +188,23 @@ body {
 #np_title {
     font-size: 24px;
     margin-bottom: 10px;
+    margin-top: 20px;
 }
 .np_info {
     font-size: 17px;
     margin-right: 20px;
     margin-left: 20px;
-}
-#nowplaying span {
     float: right;
     clear: right;
     text-align: right;
+}
+#nowplaying span {
 }
 #player-controls {
     position: absolute;
     left: 541px;
     top: 24px;
+    opacity: 0.85;
 }
 
 #player-controls a {
@@ -217,6 +220,20 @@ body {
 #pc-prev { background: url("../img/icon_prev_lp.png") no-repeat scroll 0 0 transparent; }
 #pc-pause { background: url("../img/icon_pause_lp.png") no-repeat scroll 0 0 transparent; }
 
+#np-play { background: url("../img/icon_play_pause_lp.png") no-repeat scroll 0 0 transparent; margin-left: 32px;}
+#np-next { background: url("../img/icon_next_lp.png") no-repeat scroll 0 0 transparent; margin-left: 32px;}
+#np-prev { background: url("../img/icon_prev_lp.png") no-repeat scroll 0 0 transparent; }
+
+#np-controls a {
+    display: block;
+    float: left;
+    height: 48px;
+    width: 48px;
+}
+#np-controls {
+    margin-left: 50px;
+    margin-top: 5px;
+}
 #np_handle {
     display: none;
     background-color: #CCCCCC;
@@ -224,11 +241,35 @@ body {
     position: absolute;
     width: 20px;
 }
+.result-album {
+    width: 200px;
+    float: left;
+    margin: 37px 44px -20px;
+}
+.result-albumtop {
+    width: 200px;
+    height: 40px;
+    text-align: center;
+}
+.result-albumbottom {
+    width: 200px;
+    height: 40px;
+    text-align: center;
+}
+.result-art {
+    width: 200px;
+    height: 200px;
+}
+.result-title {
+}
+.result-artist {
+}
+
 
 #np_albumart {
     width: 200px;
     height: 200px;
-    margin: 30px 25px 40px 53px;
+    margin: 30px 25px 5px 32px;
     border-style: solid;
     border-width: 1px;
     border-color: #CCC;
@@ -242,7 +283,6 @@ body {
   height: 11px;
   left: 53px;
   position: relative;
-  top: -35px;
   width: 200px;
 }
 #np_progress_fill {
@@ -252,7 +292,6 @@ body {
   position: relative;
   top: 1px;
   width: 0px;
-  /* width: 197px; */
 }
 #album-title {
     font-size: 33px;
@@ -265,10 +304,9 @@ body {
 
 #content-artist {
     font-size: 33px;
-    line-height: 33px;
+    line-height: 46px;
     color: #FFFFFF;
     text-decoration: none;
-    display: block;
     margin-top: 10px;
 }
 
@@ -276,7 +314,6 @@ body {
     display: block;
 }
 #album-info {
- /*   position: fixed;*/
     height: 100%;
     width: 100%;
     display: block;
@@ -310,6 +347,7 @@ body {
     color: #AAAAAA;
 }
 #content-songs a {
+    text-decoration: none;
     color: #EEEEEE;
 }
 #content-songs a:hover {
