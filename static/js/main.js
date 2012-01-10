@@ -8,6 +8,7 @@ $.template( "contentTemplate", '<div id="album-info"><div id="info-top"><a id="a
 $.template( "songTemplate", '<span class="song-track">{{=songTrack}}</span><a id="playlink_{{=songID}}" href="javascript:void(0)" title="Add &ldquo;{{=songName}}&rdquo; to playlist" class="playsong"><span class="song-name">{{=songName}}</span></a>');
 $.template( "sideSongsTemplate", '<div id="content-songs" class="sidebarmain"><span id="s_s" class="sidebar-header">songs</span><div id="songs-songs" class="sidebar-content"></div></div>');
 $.template( "nowPlayingTemplate", '<div id="nowplaying"><span id="np_np" class="sidebar-header">now playing</span><div id="np_content" class="sidebar-content normal"><a id="np_handle"></a><img id="np_albumart" class="normal" src="{{=songAlbumArtUrl}}" /><div id="np_progress" class="normal"><div id="np_progress_fill"></div></div><div id="np-controls" class="normal"><a id="np-prev" class="normal" href="javascript:void(0)"></a><a id="np-play" class="normal paused" href="javascript:void(0)"></a><a id="np-next" class="normal" href="javascript:void(0)"></a></div><span class ="np_info normal" id="np_title">{{=songName}}</span><span class ="np_info normal" id="np_artist">{{=songArtistName}}</span><span class ="np_info normal" id="np_album">{{=songAlbumTitle}}</span></div></div>');
+$.template( "filterTemplate", '<div id="filter"><form id="filterform" action="javascript:void(0)"><input type="text" name="filterstring" id="filterblock" title="Filter string" class="u1" /></form></div>');
 $.template( "loginTemplate", '<div id="login"><form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /><span id="rememberme"><input type="checkbox" name="remember" id="remcheck" title="Remember me" />Remember me</span></form></div>');
 $.template( "controlTemplate", '<div id="player-controls"><a id="pc-prev" href="javascript:void(0)"></a><a id="pc-play" href="javascript:void(0)"></a><a id="pc-pause" href="javascript:void(0)"></a><a id="pc-stop" href="javascript:void(0)"></a><a id="pc-next" href="javascript:void(0)"></a></div>');
 $.template( "controlTemplate2", '<div id="np-controls"><a id="np-prev" href="javascript:void(0)"></a><a id="np-play" href="javascript:void(0)"></a><a id="np-next" href="javascript:void(0)"></a></div>');
@@ -42,11 +43,7 @@ function loadAlbum(x,y) {
         }
     });
 }
-
-function artistAlbums() {
-    //e.preventDefault();
-    var artistID = currentdata.albumArtistID;
-    var url = "http://core.lan/api/artists/" + artistID + "/albums";
+function albumReq(url) {
     $('#content-songs').remove(); 
     $('.sidebar-content').show();
     setWrapperSize();
@@ -64,9 +61,25 @@ function artistAlbums() {
             }
         }
     });
-    return false;
 }
 
+function artistAlbums() {
+    //e.preventDefault();
+    var artistID = currentdata.albumArtistID;
+    var url = "http://core.lan/api/artists/" + artistID + "/albums";
+    albumReq(url);
+    return false;
+}
+function filterArtistAlbums (filter) {
+   if (filter) {
+       blankContentScreen();
+       $('.result-album').remove(); 
+       albumReq("http://core.lan/api/albums/?artist=" + filter); 
+   } else {
+       closeImgPreview();
+   }
+   return false;
+}
 playlist = new Array();
 
 function updateNowPlaying(song) {
@@ -85,46 +98,16 @@ function maximizeNowPlaying() {
     
     $('#np_np').show();
     $('#np_content,#np_content>*,#np-controls>*').removeClass('minimized').addClass('normal');
+    setWrapperSize();
 }
 
 function minimizeNowPlaying() {
     
     $('#np_np').hide();
     $('#np_content,#np_content>*,#np-controls>*').removeClass('normal').addClass('minimized');
+    setWrapperSize();
 }
 
-/*
-#np_albumart {
-    height: 71px;
-    width: 71px;
-    position: absolute;
-    top: 57px;
-    left: 19px;
-}
-
-#np_progress {
-    display: none;
-}
-
-#np_controls {
-    display: none;
-}
-
-#np_title {
-    font-size: 19px;
-    height: 23px;
-    margin-bottom: px;
-    margin-top: 52px;
-    overflow: hidden;
-    width: 150px;
-}
-
-.np_info {
-    font-size: 15px;
-    margin-left: 20px;
-    margin-right: 20px;
-}
-*/
 function loadSongs(item) {
     
     var jsondata = item.data("json");
@@ -314,59 +297,73 @@ function sizeContent() {
         });
 }
 
+function setupContent () {
+   $("#viewport").append($.render( {}, "contentWrapperTemplate"));
+   loadOtherK();
+   $('#content-preview').on('click','.result-album',function(e){
+       if (!kinetic_moving ) {
+           openItem ($(this) );
+       }
+       return false;
+    });
+    $('#content-preview').on('click','#content-artist', artistAlbums);
+    $('#content-preview').on('click','#album-art', playAlbum);
+    $('#content-preview').on('click','#album-title', function(e) {
+        e.preventDefault();
+        console.log('aaa');
+        var thisData = $(this).data('json');
+        var artUrl = $('#album-art').attr('src');
+        for(var i = 0; i < thisData.length; i++) {
+            thisData[i].songAlbumArtUrl = artUrl;
+            addToPlaylist(thisData[i]);
+        }
+        minimizeNowPlaying();
+        return false;
+    });
+}
+function blankContentScreen () {
+
+        if (!$('#content-preview').length) { setupContent(); } 
+
+        if (!$('#content-bg').hasClass('active')) { showLightBox(); }
+
+        $('#content-preview').show().click(closeImgPreview).css({
+            'height'    :   vp.outerHeight(true),
+            'width'     :   vp.outerWidth(true), 
+            'left'      :   0,
+            'top'       :   vp.offset().top
+        });
+    
+}
 loadContentItem = function ( $item , callback) {
-    var hasContentPreview   = ( $('#content-preview').length > 0 );
+
+    if (!$('#content-preview').length) { setupContent(); } 
+    
     var jsondata = $item.data('json'); 
-    if (!hasContentPreview) {
-       $("#viewport").append($.render( jsondata, "contentWrapperTemplate"));
-       loadOtherK();
-       $('#content-preview').on('click','.result-album',function(e){
-           if (!kinetic_moving ) {
-               openItem ($(this) );
-           }
-           return false;
-        });
-        $('#content-preview').on('click','#content-artist', artistAlbums);
-        $('#content-preview').on('click','#album-art', playAlbum);
-        $('#content-preview').on('click','#album-title', function(e) {
-            e.preventDefault();
-            console.log('aaa');
-            var thisData = $(this).data('json');
-            var artUrl = $('#album-art').attr('src');
-            for(var i = 0; i < thisData.length; i++) {
-                thisData[i].songAlbumArtUrl = artUrl;
-                addToPlaylist(thisData[i]);
-            }
-            return false;
-        });
-        
-    } 
         
     loadSongs($item);
+    
+    var vp = $('#viewport');
     var oldL = $item.offset().left;
     var oldT = $item.offset().top;
-    var newL;
-    var newT;
-    var vpX = $('#viewport').outerWidth(true)
-    var vpY = $('#viewport').outerHeight(true)
+    var newL, newT;
+    var vpX = vp.outerWidth(true)
+    var vpY = vp.outerHeight(true)
     var xBlk = (vpX - (pwidth * 2)) / 2;
     var yBlk = pheight * 2;
     var yGap = (vpY - yBlk) / 2;
     var midX = vpX / 2;
     var midY = vpY / 2;
     
-    if ((oldL + (.5 * pwidth)) < midX) {
-        newL = oldL;
-    } else { newL = oldL - pwidth; }
+    if ((oldL + (.5 * pwidth)) < midX) { newL = oldL; } else { newL = oldL - pwidth; }
         
     if ((oldT - $('#topbar').outerHeight(true) + (.5 * pheight)) < midY) {
         newT = oldT;
     } else { newT = oldT - pheight; }
 
-    var vp = $('#viewport');
 
     $("#content-wrapper").html( $.render( jsondata, "contentTemplate"));
-    showLightBox(); 
+    showLightBox(300); 
     $("#album-art").css({
         width   :   $item.width(),
         height  :   $item.height(),
@@ -430,8 +427,9 @@ loadContentItem = function ( $item , callback) {
      if (callback) callback.call();
 } 
 
-function showLightBox() {
+function showLightBox(time) {
 
+    var vtime = time ? time : 0;
     vp = $('#viewport');
     $('#content-bg').css({
         'height'    :   vp.outerHeight(true),
@@ -441,9 +439,9 @@ function showLightBox() {
         'opacity'   :   0
     })
 
-    $('#content-bg').show().animate({
+    $('#content-bg').addClass('active').show().animate({
         opacity: 0.8
-    }, 300, 'easeOutQuad', function() {
+    }, vtime, 'easeOutQuad', function() {
     });
 
 }
@@ -455,8 +453,10 @@ closeImgPreview             = function() {
     if( isAnimating || kinetic_moving) return false;
     isAnimating = true;
 
-    var $item   = current;
+    var $item   = current ? current : $('#filler_0_0'); 
+        
     var vp = $('#viewport');
+    $('#filterblock').blur();
     $('.album-text').hide();
     $('#info-top,#info-left,#info-right,#info-bottom').hide();
     console.log('closing...');
@@ -477,6 +477,7 @@ closeImgPreview             = function() {
                             }, 400, function() {
                                 $(this).fadeOut(function() {
                                     $('#content-songs').remove(); 
+                                    $('#content-bg').removeClass('active');
                                     maximizeNowPlaying();
                                     setWrapperSize();
                                     //vp.kinetic();
@@ -610,12 +611,30 @@ function playAlbum (e) {
         playPlaylist();
         return false;
 }    
+
+var keyT;
+function attachFilterEvents() {
+    var f = $('#filter');
+    f.on('keyup',function(e) {
+        keyT = setTimeout(function(){
+           filterArtistAlbums($("#filterblock").val());
+        },300);
+    });
+    f.on('keydown',function(e) {
+        clearTimeout(keyT);
+    });
+    $('#filterblock').focus(function() {
+        this.select();
+    });
+}
 function loadSite () {
     keepSessionAlive();
 //    $('#rightbar').html( $.render( {}, "nowPlayingTemplate"));
     setWrapperSize();
     mincol = Math.ceil((maxcolumns - 1) / 2) * -1;
     maxcol = (maxcolumns - 1) + mincol;
+    $("#topbar").empty().append( $.render({}, 'filterTemplate'));
+    attachFilterEvents();
     $("#viewport").empty().append('<div id="album-div"><div class="layout-row" id="row_0"></div></div>');
     
     //$("#album-div").append('<div class="layout-row" id="row_0"></div>')
@@ -632,16 +651,39 @@ function loadSite () {
         sizeContent();
     });
     
-    $(document).keypress(function(event){
-        if ( event.which == 91) {
-            event.preventDefault();
-            prevPlaylist();
-        } else if ( event.which == 93) {
-            event.preventDefault();
-            nextPlaylist();
-        } else if ( event.which == 112) {
-            event.preventDefault();
-            pausePlaylist();
+    $(document).on('keyup',function(event){
+        var target = $(event.target);
+        if (!target.is("#filterblock") ) {
+            console.log(event.which);
+            if ( event.which == 219) {
+                event.preventDefault();
+                prevPlaylist();
+            } else if ( event.which == 221) {
+                event.preventDefault();
+                nextPlaylist();
+            } else if ( event.which == 80) {
+                event.preventDefault();
+                pausePlaylist();
+            } else if ( event.which == 79) {
+                event.preventDefault();
+                $('#filterblock').focus();
+            } else if ( event.which == 37) {
+                event.preventDefault();
+                var sl = $('#viewport').scrollLeft();
+                $('#viewport').scrollLeft(sl - pwidth);
+            } else if ( event.which == 38) {
+                event.preventDefault();
+                var sl = $('#viewport').scrollTop();
+                $('#viewport').scrollTop(sl - pheight);
+            } else if ( event.which == 39) {
+                event.preventDefault();
+                var sl = $('#viewport').scrollLeft();
+                $('#viewport').scrollLeft(sl + pwidth);
+            } else if ( event.which == 40) {
+                event.preventDefault();
+                var sl = $('#viewport').scrollTop();
+                $('#viewport').scrollTop(sl + pheight);
+            }
         }
     });
     $('#album-div').on('click','.album', function() {
@@ -657,6 +699,7 @@ function loadSite () {
         var thisData = $(this).data('json');
         thisData.songAlbumArtUrl = $('#album-art').attr('src');    // dirty hack - need to add album art url to json on server side 
         addToPlaylist(thisData);
+        minimizeNowPlaying();
         return false;
     });
     $('#rightbar').on('click','#np-prev', function(e) {

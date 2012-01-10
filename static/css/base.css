@@ -178,6 +178,11 @@ body {
   top: 18px;
   width: 12px;
 }
+#filter {
+    position: absolute;
+    right: 0px;
+    bottom: 0px;
+}
 #content-songs {
     overflow: hidden;
 }
@@ -417,6 +422,7 @@ body {
 #topbar {
     height: 78px;
     background: transparent url(../img/stereoid-logo.png) no-repeat 0px -6px;
+    position: relative;
 }
 
 #bottombar {
