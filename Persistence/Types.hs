@@ -20,6 +20,20 @@ data SongData  =  SongData  { sodName     :: B.ByteString
                             , sodDuration :: Int
                             } deriving (Eq,Ord,Typeable)
 
+data SongCacheData  =  SongCacheData  { scdName     :: B.ByteString
+                                      , scdTrack    :: Int
+                                      , scdYear     :: Int
+                                      , scdFile     :: B.ByteString
+                                      , scdAlbumId  :: Int
+                                      , scdAlbumTitle :: B.ByteString
+                                      , scdArtistId :: Int
+                                      , scdArtistName :: B.ByteString
+                                      , scdDuration :: Int
+                                      } deriving (Eq,Ord,Typeable)
+
+sodToScd :: SongData -> B.ByteString -> B.ByteString -> SongCacheData
+sodToScd (SongData a b c d e f g) alb art = SongCacheData a b c d e alb f art g
+
 data AlbumData =  AlbumData { aldTitle     :: B.ByteString
                             , aldSortTitle :: B.ByteString
                             } deriving (Eq, Ord, Typeable)
@@ -66,11 +80,14 @@ data AlbumDb    = AlbumDb !(IntMap.IntMap    AlbumData) deriving (Typeable)
 data ArtistDb   = ArtistDb !(IntMap.IntMap   ArtistData) deriving (Typeable)
 data AlbumArtDb = AlbumArtDb !(IntMap.IntMap AlbumArtData) deriving (Typeable)
 data AlbumCache = AlbumCache !(IntMap.IntMap AlbumCacheData) deriving (Typeable)
+data SongCache = SongCache !(IntMap.IntMap SongCacheData) deriving (Typeable)
 data ArtistCache = ArtistCache !(IntMap.IntMap ArtistCacheData) deriving (Typeable)
 data FileCache  = FileCache !(Map.Map B.ByteString FileCacheData) deriving (Typeable)
 data AlbumMap = AlbumMap !(Map.Map AlbumMapData Int) deriving (Typeable)
 data ArtistMap = ArtistMap !(Map.Map ArtistMapData Int) deriving (Typeable)
 data ArtistTrie = ArtistTrie !(Trie.Trie [Int]) deriving (Typeable)
+data SongTrie = SongTrie !(Trie.Trie Int) deriving (Typeable)
+
 
 data Stats = Stats { statsArtistCount :: Int
                    , statsAlbumCount :: Int
@@ -88,6 +105,7 @@ data StereoidDb = StereoidDb { sdbSongs   ::     SongDb
                              , sdbAlbums  ::    AlbumDb
                              , sdbArtists ::   ArtistDb
                              , sdbArt     :: AlbumArtDb
+                             , sdbSongCache :: SongCache
                              , sdbAlbumCache :: AlbumCache
                              , sdbArtistCache :: ArtistCache
                              , sdbFileCache :: FileCache
@@ -95,6 +113,7 @@ data StereoidDb = StereoidDb { sdbSongs   ::     SongDb
                              , sdbArtistMap :: ArtistMap
                              , sdbStats       :: Stats
                              , sdbArtistTrie :: ArtistTrie
+                             , sdbSongTrie :: SongTrie
                              } deriving (Typeable)
 
 
@@ -103,6 +122,7 @@ sdbEmpty = StereoidDb { sdbSongs = (SongDb IntMap.empty)
                       , sdbAlbums = (AlbumDb IntMap.empty)
                       , sdbArtists = (ArtistDb IntMap.empty)
                       , sdbArt = (AlbumArtDb IntMap.empty)
+                      , sdbSongCache = (SongCache IntMap.empty)
                       , sdbAlbumCache = (AlbumCache IntMap.empty)
                       , sdbArtistCache = (ArtistCache IntMap.empty)
                       , sdbFileCache = (FileCache Map.empty)
@@ -110,5 +130,6 @@ sdbEmpty = StereoidDb { sdbSongs = (SongDb IntMap.empty)
                       , sdbArtistMap = (ArtistMap Map.empty)
                       , sdbStats = sdbStatsEmpty
                       , sdbArtistTrie = (ArtistTrie Trie.empty)
+                      , sdbSongTrie = (SongTrie Trie.empty)
                       }
 

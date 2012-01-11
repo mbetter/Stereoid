@@ -55,6 +55,7 @@ route sdb users sessions url =
                     (AlbumInfo albumId)     -> chk $ albumData sdb albumId
                     (ArtistInfo artistId)   -> chk $ artistData sdb artistId
                     (ArtistAlbums artistId) -> chk $ artistAlbums sdb artistId
+                    (Songs)                 -> chk $ songsAll sdb 
                     (Artists)               -> chk $ artistsAll sdb 
                     (Albums)                -> chk $ albumsAll sdb 
                     (AlbumSongs albumId)    -> chk $ albumSongs sdb albumId
@@ -212,6 +213,17 @@ artistsAll :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
 artistsAll sdb = do
     artists <- getArtists sdb
     ok $ toResponse $ showJSON artists
+
+songsAll :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
+songsAll sdb = do
+    ol <- getOffsetLimit
+    filter <- getDataFn $ lookRead "title"
+    let fSongs = case filter of
+                (Left e) -> getSongs sdb ol
+                (Right r) -> filterSongTrie sdb (E.encodeUtf8 $ T.toUpper $ T.pack r)
+    sos <- fSongs
+    songs <- mapM songAddUrl sos
+    ok $ toResponse $ showJSON songs
 
 albumsAll :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
 albumsAll sdb = do

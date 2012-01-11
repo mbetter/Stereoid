@@ -30,6 +30,7 @@ newtype SongId
 
 data Sitemap
     = Home
+    | Songs
     | Albums
     | Artists
     | ArtistInfo ArtistId
@@ -49,13 +50,15 @@ $(derivePrinterParsers ''Sitemap)
 sitemap :: Router Sitemap
 sitemap =
     (  rHome
-    <> rStream . (lit "song" </> songId)
+    <> rStream . (lit "stream" </> songId)
     <> rSessions . (lit "sessions")
     <> rUsers . (lit "users")
+    <> lit "songs" . song
     <> lit "albums" . album
     <> lit "artists" . artist
     )
     where
+      song   =  rSongs
       album  =  rAlbums
              <> rAlbumInfo     </> albumId
              <> rAlbumArt      </> albumId  </> lit "art"
