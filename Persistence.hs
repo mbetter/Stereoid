@@ -12,6 +12,7 @@ import Data.Acid
 import Data.Acid.Advanced
 import Data.SafeCopy
 import qualified Data.Trie as Trie
+import qualified Data.Trie.Convenience as TC
 import System.Random.Shuffle (shuffle')
 import System.Random (mkStdGen)
 import Data.Maybe (mapMaybe)
@@ -20,7 +21,7 @@ import DataStructuresInternal
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Reader
-
+import Control.Applicative (pure)
 import qualified Data.Map as Map
 import qualified Data.IntMap as IntMap
 import qualified Data.Set as Set
@@ -222,7 +223,7 @@ queryAlbums = getDb albumDb
 queryArtistMap:: ArtistMapData -> Query StereoidDb (Maybe Int)
 queryArtistMap = (withDb artistMap) . Map.lookup
 
-querySongTrie:: B.ByteString -> Query StereoidDb (Trie.Trie Int)
+querySongTrie:: B.ByteString -> Query StereoidDb (Trie.Trie [Int])
 querySongTrie = (withDb songTrie) . Trie.submap
 
 queryArtistTrie:: B.ByteString -> Query StereoidDb (Trie.Trie [Int])
@@ -531,7 +532,7 @@ buildArtistMap acid = do
 buildSongTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
 buildSongTrie acid = do
     songs <- query' acid (QuerySongs)
-    update' acid (InsertSongTrie $ SongTrie $ Trie.fromList $ zip (map f (IntMap.elems songs)) (IntMap.keys songs))
+    update' acid (InsertSongTrie $ SongTrie $ TC.fromListWith (++) $ zip (map f (IntMap.elems songs)) (map pure (IntMap.keys songs)))
     where f = E.encodeUtf8 . (stripPrefix prefixList') . T.toUpper . E.decodeUtf8 . sodName
 
 
@@ -539,7 +540,7 @@ filterSongTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> B.ByteString -
 filterSongTrie acid tx = do
     let g = E.encodeUtf8 . (stripPrefix prefixList') . T.toUpper . E.decodeUtf8 
     tr <- query' acid (QuerySongTrie (g tx))
-    albums <- query' acid (QuerySongCacheBySongIds (Trie.elems tr))
+    albums <- query' acid (QuerySongCacheBySongIds (concat $ Trie.elems tr))
     return $ map (f) albums
              where f (i,d)  = cacheToSong d i
 

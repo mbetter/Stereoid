@@ -125,6 +125,9 @@ main = do
         putStrLn "Building song cache ..."
         buildSongCache sdb
 
+        putStrLn "Building song trie ..."
+        buildSongTrie sdb
+
         putStrLn "Building stats..."
         buildStats sdb
         putStrLn "Done!"
