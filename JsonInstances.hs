@@ -40,6 +40,7 @@ instance JSON Song where
         , ("songName", showJSON $ songName gd)
         , ("songTrack", showJSON $ songTrack gd)
         , ("songUrl", showJSON $ songUrl gd)
+        , ("songArtUrl", showJSON $ songArtUrl gd)
         , ("songAlbumId", showJSON $ songAlbumId gd)
         , ("songAlbumTitle", showJSON $ songAlbumTitle gd)
         , ("songArtistName", showJSON $ songArtistName gd)
@@ -52,6 +53,7 @@ instance JSON Song where
             sN  <- mLookup "songName" jsonObjAssoc >>= readJSON
             sT  <- mLookup "songTrack" jsonObjAssoc >>= readJSON
             sU  <- mLookup "songUrl" jsonObjAssoc >>= readJSON
+            sAU <- mLookup "songArtUrl" jsonObjAssoc >>= readJSON
             sAl <- mLookup "songAlbumId" jsonObjAssoc >>= readJSON
             sAT <- mLookup "songAlbumTitle" jsonObjAssoc >>= readJSON
             sAN <- mLookup "songArtistName" jsonObjAssoc >>= readJSON
@@ -61,6 +63,7 @@ instance JSON Song where
                 , songName = sN
                 , songTrack = sT
                 , songUrl = sU
+                , songArtUrl = sAU
                 , songAlbumId = sAl
                 , songAlbumTitle = sAT
                 , songArtistName = sAN

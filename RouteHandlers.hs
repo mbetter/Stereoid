@@ -122,10 +122,12 @@ songAddUrl I.Song { I.songID  = id
                   , I.songArtistName = artistname
                   , I.songDuration = time
                   } = do surl <- (showURL (Stream (SongId id)  ))
+                         aurl <- (showURL (AlbumArt (AlbumId albumID) ))
                          return Song { songID  = id
                                      , songName = name
                                      , songTrack = track
                                      , songUrl = surl
+                                     , songArtUrl = aurl
                                      , songAlbumId = albumID
                                      , songAlbumTitle = albumtitle
                                      , songArtistName = artistname

@@ -21,7 +21,6 @@ import DataStructuresInternal
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Reader
-import Control.Applicative (pure)
 import qualified Data.Map as Map
 import qualified Data.IntMap as IntMap
 import qualified Data.Set as Set
@@ -532,7 +531,7 @@ buildArtistMap acid = do
 buildSongTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
 buildSongTrie acid = do
     songs <- query' acid (QuerySongs)
-    update' acid (InsertSongTrie $ SongTrie $ TC.fromListWith (++) $ zip (map f (IntMap.elems songs)) (map pure (IntMap.keys songs)))
+    update' acid (InsertSongTrie $ SongTrie $ TC.fromListWith (++) $ zip (map f (IntMap.elems songs)) (map (:[]) (IntMap.keys songs)))
     where f = E.encodeUtf8 . (stripPrefix prefixList') . T.toUpper . E.decodeUtf8 . sodName
 
 

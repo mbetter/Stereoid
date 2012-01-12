@@ -19,6 +19,7 @@ data Song  =  Song  { songID :: Int
                     , songName :: B.ByteString
                     , songTrack :: Int
                     , songUrl :: String
+                    , songArtUrl :: String
                     , songAlbumId :: Int
                     , songAlbumTitle :: B.ByteString
                     , songArtistName :: B.ByteString

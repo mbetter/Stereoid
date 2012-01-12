@@ -159,6 +159,12 @@ body {
     height: 100%;
     display: block;
     font-size: 18px;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -o-user-select: none;
+    user-select: none;
 }
 
 #nowplaying {
@@ -248,6 +254,17 @@ body {
 /* minimized */
 #np_content {
 }
+.r_song {
+  width: 300px;
+  height: 88px;
+  bottom: 0px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  margin-bottom: -1px;
+  position: relative;
+}
 #np_content.minimized {
   position: absolute;
   width: 300px;
@@ -255,6 +272,7 @@ body {
   bottom: 0px;
   border-top-style: solid;
   border-top-width: 1px;
+  background-color: #333344;
 }
 #np-controls {
     margin-left: 50px;
@@ -268,6 +286,18 @@ body {
     width: 20px;
 }
 
+.rs_title {
+  font-size: 19px;
+  height: 23px;
+  margin-bottom: 10px;
+  margin-top: 5px;
+  margin-right: 12px;
+  overflow: hidden;
+  width: 255px;
+  clear: right;
+  float: right;
+  text-align: right;
+}
 #np_title.minimized {
   font-size: 19px;
   height: 23px;
@@ -278,6 +308,14 @@ body {
   font-size: 24px;
   margin-bottom: 10px;
   margin-top: 20px;
+}
+.rs_info {
+  color: #CCCCCC;
+  font-size: 14px;
+  margin-right: 12px;
+  overflow: hidden;
+  width: 255px;
+  height: 21px;
 }
 .np_info.minimized {
   font-size: 14px;
@@ -290,6 +328,11 @@ body {
   margin-left: 20px;
   margin-right: 20px;
   font-size: 17px;
+}
+.rs_info {
+  clear: right;
+  float: right;
+  text-align: right;
 }
 .np_info {
   clear: right;
@@ -413,8 +456,20 @@ body {
 }
 #content-songs a {
     text-decoration: none;
-    color: #EEEEEE;
+    color: #CCFFCC;
+    background-color: #555555;
+    bottom: 4px;
+    font-size: 75px;
+    line-height: 78px;
+    padding-right: 2px;
+    margin-left: 3px;
+    position: absolute;
+
 }
+#content-songs a:focus {
+    outline: none;
+}
+
 #content-songs a:hover {
     color: #AAAAAA;
 }
