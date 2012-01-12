@@ -272,7 +272,7 @@ body {
   bottom: 0px;
   border-top-style: solid;
   border-top-width: 1px;
-  background-color: #333344;
+  background-color: #27282E;
 }
 #np-controls {
     margin-left: 50px;
@@ -382,7 +382,7 @@ body {
     line-height: 33px;
     color: #FFFFFF;
     text-decoration: none;
-    display: block;
+    display: inline-block;
     margin-bottom: 10px;
 }
 
@@ -439,6 +439,9 @@ body {
     width: 200px;
     height: 40px;
     text-align: center;
+}
+.result-play {
+    display: block
 }
 .result-art {
     width: 200px;

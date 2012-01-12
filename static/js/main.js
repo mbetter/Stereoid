@@ -14,7 +14,7 @@ $.template( "filterTemplate", '<div id="filter"><form id="filterform" action="ja
 $.template( "loginTemplate", '<div id="login"><form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /><span id="rememberme"><input type="checkbox" name="remember" id="remcheck" title="Remember me" />Remember me</span></form></div>');
 $.template( "controlTemplate", '<div id="player-controls"><a id="pc-prev" href="javascript:void(0)"></a><a id="pc-play" href="javascript:void(0)"></a><a id="pc-pause" href="javascript:void(0)"></a><a id="pc-stop" href="javascript:void(0)"></a><a id="pc-next" href="javascript:void(0)"></a></div>');
 $.template( "controlTemplate2", '<div id="np-controls"><a id="np-prev" href="javascript:void(0)"></a><a id="np-play" href="javascript:void(0)"></a><a id="np-next" href="javascript:void(0)"></a></div>');
-$.template( "resultAlbumTemplate", '<div id="ralb_{{=albumID}}" class="result-album"><div class="result-albumtop"><span class="result-title">{{=albumTitle}}</span></div><img class="result-art" src="{{=albumArtThumbUrl}}" /><div class="result-albumbottom"><span class="result-artist">{{=albumArtistName}}</span></div></div>');
+$.template( "resultAlbumTemplate", '<div class="result-album"><div class="result-albumtop"><span class="result-title">{{=albumTitle}}</span></div><a href="javascript:void(0)" class="result-play" id="ralb_{{=albumID}}" ><img class="result-art" src="{{=albumArtThumbUrl}}" /></a><div class="result-albumbottom"><span class="result-artist">{{=albumArtistName}}</span></div></div>');
 
 session_timeout = 14 * 60 * 1000;
 updating_session = false;
@@ -309,7 +309,7 @@ function sizeContent() {
 function setupContent () {
    $("#viewport").append($.render( {}, "contentWrapperTemplate"));
    loadOtherK();
-   $('#content-preview').on('click','.result-album',function(e){
+   $('#content-preview').on('click','.result-play',function(e){
        if (!kinetic_moving ) {
            openItem ($(this) );
        }
