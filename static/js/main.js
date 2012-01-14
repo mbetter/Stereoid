@@ -54,6 +54,11 @@ function loadAlbumRange(begin,end,divs) {
     $.ajax({
         url: "http://core.lan/api/albums?sort=random&seed=" + seed + "&limit=" + limit + "&offset=" + begin,
         success: function(data){
+            if (divs.length > data.length) {
+                for(var i = data.length; i < divs.length; i++) {
+                    $('#' + divs[i]).empty();
+                }    
+            }
             for(var i = 0; i < data.length; i++) {
                 var d = $('#' + divs[i]);
                 d.html( $.render( data[i], "albumTemplate"));
@@ -191,14 +196,12 @@ function g_authenticate() {
                     'logintoken' : logintoken
                    },
             success: function(data){
-                    console.log('login success');
                     $.cookie('token',data.sessionToken, {raw: true});
                     $.jStorage.set('username',username);
                     $.jStorage.set('logintoken',data.loginToken);
                     return true;
                 },
              error: function(data){
-                    console.log('login error');
                     $.cookie('token', null);
                     $.jStorage.deleteKey('username');
                     $.jStorage.deleteKey('logintoken');
@@ -224,14 +227,12 @@ function r_authenticate() {
                     'logintoken' : logintoken
                    },
             success: function(data){
-                    console.log('login success');
                     $.cookie('token',data.sessionToken, {raw: true});
                     $.jStorage.set('username',username);
                     $.jStorage.set('logintoken',data.loginToken);
                     loadSite();
                 },
              error: function(data){
-                    console.log('login error');
                     $.cookie('token', null);
                     $.jStorage.deleteKey('username');
                     $.jStorage.deleteKey('logintoken');
@@ -248,7 +249,6 @@ function l_authenticate(username,password,remember) {
 
     var ts = Math.round((new Date()).getTime() / 1000);
     var auth = Sha1.hash(Sha1.hash(password) + ts);
-    console.log(username + " " + password);
     var authurl = 'http://core.lan/api/sessions'
     if ($("#remcheck:checked").val()) {
         authurl += '?rememberme=true'
@@ -262,7 +262,6 @@ function l_authenticate(username,password,remember) {
                 'timestamp': ts
                },
         success: function(data){
-            console.log('success');
             $.cookie('token',data.sessionToken, {raw: true});
             if (data.loginToken) {
                 $.jStorage.set('username',username);
@@ -347,7 +346,6 @@ function setupContent () {
     $('#content-preview').on('click','#album-art', playAlbum);
     $('#content-preview').on('click','#album-title', function(e) {
         e.preventDefault();
-        console.log('aaa');
         var thisData = $(this).data('json');
         var artUrl = $('#album-art').attr('src');
         for(var i = 0; i < thisData.length; i++) {
@@ -494,7 +492,6 @@ closeImgPreview             = function() {
     $('#filterblock').blur();
     $('.album-text').hide();
     $('#info-top,#info-left,#info-right,#info-bottom').hide();
-    console.log('closing...');
     $('.result-album').remove();
     $('#content-preview,#album-art').css({
         width   :   pwidth * 2,
@@ -688,7 +685,6 @@ function loadSite () {
     $(document).on('keyup',function(event){
         var target = $(event.target);
         if (!target.is("#filterblock") ) {
-            console.log(event.which);
             if ( event.which == 219) {
                 event.preventDefault();
                 prevPlaylist();
@@ -777,8 +773,6 @@ function addScrollEvents(){
        var xph = vp.width();
        var toscrolly = "+=0px";
        var toscrollx = "+=0px";
-       // console.log("curheight: " + curheight + ", ypos: " + ypos + ", yph: " + yph);
-       // console.log("curwidth: " + curwidth + ", xpos: " + (xpos + xph));
        if ((ypos + yph + (pheight * .90)) > curheight) {
            if (addBottomRow()) {
                 toscrolly = "-=" + pheight + "px";
@@ -832,7 +826,6 @@ function createPlaceholder (x,y) {
 }
 
 function addTopRow () {
-    console.log('addTopRow()');
     var divs = new Array();
     minrow--;
     if ((maxrow - minrow) >= maxrows) {
@@ -845,7 +838,6 @@ function addTopRow () {
     var start, end, startx;
     for (i=mincol;i<=maxcol;i++) {
         var ro = rose(i,minrow);
-        console.log(lr + ' ' + ro);
         if (!lr) {
           lr = ro;
           start = lr;
@@ -865,7 +857,6 @@ function addTopRow () {
             startx = i;
             end = lr;
             divs.push('filler_' + i + '_' + minrow);
-            console.log(divs);
         }
     }
     if (divs) {
@@ -876,7 +867,6 @@ function addTopRow () {
 }
     
 function insertDivsDec(ids,row,stx) {
-    //console.log(ids);
     var cta = ""
     var prev = $('#filler_'+ (stx - 1) + '_' + row);
     var next = $('#filler_'+ (stx + ids.length + 1) + '_' + row);
@@ -889,17 +879,13 @@ function insertDivsDec(ids,row,stx) {
     }
     if (prev.length) {
         prev.after(cta);
-        console.log('#filler_'+ (stx - 1) + '_' + row + '.after(' + cta + ')');
     } else if (next.length) {
         next.before(cta);
-        console.log('#filler_'+ (stx + ids.length + 1) + '_' + row + '.before(' + cta + ')');
     } else {
-        console.log("$(#row_" + row + ").append(" + cta + ")");
         $("#row_" + row).append(cta);
     }
 }
 function insertDivs(ids,row,stx) {
-    //console.log(ids);
     var cta = ""
     var prev = $('#filler_'+ (stx - 1) + '_' + row);
     var next = $('#filler_'+ (stx + ids.length + 1) + '_' + row);
@@ -912,17 +898,13 @@ function insertDivs(ids,row,stx) {
     }
     if (prev.length) {
         prev.after(cta);
-        console.log('#filler_'+ (stx - 1) + '_' + row + '.after(' + cta + ')');
     } else if (next.length) {
         next.before(cta);
-        console.log('#filler_'+ (stx + ids.length + 1) + '_' + row + '.before(' + cta + ')');
     } else {
-        console.log("$(#row_" + row + ").append(" + cta + ")");
         $("#row_" + row).append(cta);
     }
 }
 function addBottomRow () {
-    console.log('addBottomRow()');
     var ret = false;
     var divs = new Array();
     maxrow++;
@@ -932,13 +914,10 @@ function addBottomRow () {
         minrow++;
     }
     $("#album-div").append('<div class="layout-row" id="row_' + maxrow + '"></div>');
-    var cta = "";
     var lr;
     var start, end, startx;
     for (i=mincol;i<=maxcol;i++) {
         var ro = rose(i,maxrow);
-        //console.log(divs);
-        //console.log(lr + ' ' + ro);
         if (!lr) {
           lr = ro;
           start = lr;
@@ -959,7 +938,6 @@ function addBottomRow () {
             startx = i;
             end = lr;
             divs.push('filler_' + i + '_' + maxrow);
-            //console.log(divs);
         }
     }
     if (divs) {
@@ -971,37 +949,84 @@ function addBottomRow () {
 
 function addLeftCol () {
     mincol--;
-    
+    var divs = new Array();
     if ((maxcol - mincol) >= maxcolumns) {
         for (i=minrow;i<=maxrow;i++) {
             $("#filler_" + maxcol + "_" + i).remove();
-            console.log('removed ' + maxcol + ',' + i);
         }
         maxcol--;
     }    
+    var lr;
+    var start, end, startx;
     for (i=minrow;i<=maxrow;i++) {
-        createPlaceholder(mincol,i);
-        loadAlbum(mincol,i);
+        var ro = rose(mincol,i);
+        if (!lr) {
+          lr = ro;
+          start = lr;
+          end = lr;
+          createPlaceholder(mincol,i);
+          divs.push('filler_' + mincol + '_' + i);
+        } else if (ro == (lr - 1)) {
+            lr = ro;
+            start = lr;
+            createPlaceholder(mincol,i);
+            divs.push('filler_' + mincol + '_' + i);
+        } else {
+            loadAlbumRange(start, end, divs);
+            divs = [];
+            lr = ro;
+            start = lr;
+            end = lr;
+            createPlaceholder(mincol,i);
+            divs.push('filler_' + mincol + '_' + i);
+        }
+    }
+    if (divs) {
+        loadAlbumRange(start,end,divs);
     }
 }
 
 function addRightCol () {
-    var ret = false;
+    var ret = false
     maxcol++;
+    var divs = new Array();
     if ((maxcol - mincol) >= maxcolumns) {
         ret = true;
         for (i=minrow;i<=maxrow;i++) {
             $("#filler_" + mincol + "_" + i).remove();
         }
         mincol++;
-    }
+    }    
+    var lr;
+    var start, end, startx;
     for (i=minrow;i<=maxrow;i++) {
-        createPlaceholder(maxcol,i);
-        loadAlbum(maxcol,i);
+        var ro = rose(maxcol,i);
+        if (!lr) {
+          lr = ro;
+          start = lr;
+          end = lr;
+          createPlaceholder(maxcol,i);
+          divs.push('filler_' + maxcol + '_' + i);
+        } else if (ro == (lr + 1)) {
+            lr = ro;
+            end = lr;
+            createPlaceholder(maxcol,i);
+            divs.push('filler_' + maxcol + '_' + i);
+        } else {
+            loadAlbumRange(start, end, divs);
+            divs = [];
+            lr = ro;
+            start = lr;
+            end = lr;
+            createPlaceholder(maxcol,i);
+            divs.push('filler_' + maxcol + '_' + i);
+        }
+    }
+    if (divs) {
+        loadAlbumRange(start,end,divs);
     }
     return ret;
 }
-
 function rose(x,y) {
     
     function umax(strata) {
