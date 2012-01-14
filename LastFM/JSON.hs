@@ -16,12 +16,12 @@ instance FromJSON LastFMResponse where
 instance FromJSON Album where
     parseJSON (Object v) = Album <$>
                            v .: "name" <*>
-                           v .: "artist" <*>
-                           v .: "mbid" <*>
-                           v .: "image" <*>
-                           v .: "listeners" <*>
-                           v .: "playcount" <*>
-                           v .: "toptags" <*>
+                           v .:? "artist" <*>
+                           v .:? "mbid" <*>
+                           v .:? "image" <*>
+                           v .:? "listeners" <*>
+                           v .:? "playcount" <*>
+                           v .:? "toptags" <*>
                            v .:? "wiki"
     parseJSON _          = empty
 instance FromJSON Image where

@@ -38,6 +38,10 @@ $(deriveSafeCopy 0 'base ''ArtistCacheData)
 $(deriveSafeCopy 0 'base ''FileCacheData)
 $(deriveSafeCopy 0 'base ''AlbumMapData)
 $(deriveSafeCopy 0 'base ''ArtistMapData)
+$(deriveSafeCopy 0 'base ''Wiki)
+$(deriveSafeCopy 0 'base ''MetaData)
+$(deriveSafeCopy 0 'base ''ArtAlt)
+$(deriveSafeCopy 0 'base ''ArtAltData)
 -- 
 $(deriveSafeCopy 0 'base ''SongDb)
 $(deriveSafeCopy 0 'base ''AlbumDb)
@@ -53,6 +57,8 @@ $(deriveSafeCopy 0 'base ''Stats)
 $(deriveSafeCopy 0 'base ''Trie.Trie)
 $(deriveSafeCopy 0 'base ''ArtistTrie)
 $(deriveSafeCopy 0 'base ''SongTrie)
+$(deriveSafeCopy 0 'base ''ArtAltDb)
+$(deriveSafeCopy 0 'base ''MetaDataDb)
 --
 $(deriveSafeCopy 0 'base ''StereoidDb)
 
@@ -137,6 +143,8 @@ artistMap StereoidDb {sdbArtistMap = ArtistMap x} = x
 artistTrie StereoidDb {sdbArtistTrie = ArtistTrie x} = x
 songTrie StereoidDb {sdbSongTrie = SongTrie x} = x
 fileCache StereoidDb {sdbFileCache = FileCache x} = x
+artAltDb StereoidDb {sdbArtAlt = ArtAltDb x} = x
+metaDataDb StereoidDb {sdbMetaData = MetaDataDb x} = x
 stats StereoidDb { sdbStats = x } = x
 
 withDb :: (StereoidDb -> a) -> (a -> b) -> Query StereoidDb b
@@ -146,6 +154,18 @@ withDb unw f = do db <- ask
 getDb :: (StereoidDb -> a) -> Query StereoidDb a
 getDb f = do db <- ask
              return $ f db
+
+queryArtAltByAlbumId :: Int -> Query StereoidDb (Maybe (Int,ArtAltData))
+queryArtAltByAlbumId = (withDb artAltDb) . (flip imQ) 
+
+queryArtAltByAlbumIds :: [Int] -> Query StereoidDb [(Int,ArtAltData)]
+queryArtAltByAlbumIds = (withDb artAltDb) . imQs
+
+queryMetaDataByAlbumId :: Int -> Query StereoidDb (Maybe (Int,MetaData))
+queryMetaDataByAlbumId = (withDb metaDataDb) . (flip imQ) 
+
+queryMetaDataByAlbumIds :: [Int] -> Query StereoidDb [(Int,MetaData)]
+queryMetaDataByAlbumIds = (withDb metaDataDb) . imQs
 
 querySongBySongId :: Int -> Query StereoidDb (Maybe (Int,SongData))
 querySongBySongId = (withDb songDb) . (flip imQ) 
@@ -207,6 +227,12 @@ queryArtistCache = getDb artistCache
 queryArtists:: Query StereoidDb (IntMap.IntMap ArtistData)
 queryArtists = getDb artistDb
 
+queryArtAlt:: Query StereoidDb (IntMap.IntMap ArtAltData)
+queryArtAlt = getDb artAltDb
+
+queryMetaData:: Query StereoidDb (IntMap.IntMap MetaData)
+queryMetaData = getDb metaDataDb
+
 querySongs:: Query StereoidDb (IntMap.IntMap SongData)
 querySongs = getDb songDb
 
@@ -243,6 +269,18 @@ queryStats = getDb stats
 updateStats :: Stats -> Update StereoidDb ()
 updateStats s = do db <- get
                    put (db { sdbStats = s }) 
+
+insertArtAltData :: Int -> ArtAltData -> Update StereoidDb ()
+insertArtAltData key value
+    = do db <- get
+         let (ArtAltDb songs) = sdbArtAlt db
+         put (db { sdbArtAlt = ArtAltDb (IntMap.insert key value songs) })
+
+insertMetaData :: Int -> MetaData -> Update StereoidDb ()
+insertMetaData key value
+    = do db <- get
+         let (MetaDataDb songs) = sdbMetaData db
+         put (db { sdbMetaData = MetaDataDb (IntMap.insert key value songs) })
 
 insertSongData :: Int -> SongData -> Update StereoidDb ()
 insertSongData key value
@@ -337,6 +375,8 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'insertAlbumCacheData
                           ,'insertAlbumMapData
                           ,'insertAlbumMap
+                          ,'insertArtAltData
+                          ,'insertMetaData
                           ,'insertArtistData
                           ,'insertArtistCacheData
                           ,'insertArtistMapData
@@ -357,6 +397,10 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'queryArtByAlbumId
                           ,'queryAlbumByAlbumId
                           ,'queryAlbumsByAlbumIds
+                          ,'queryMetaDataByAlbumId
+                          ,'queryArtAltByAlbumId
+                          ,'queryMetaDataByAlbumIds
+                          ,'queryArtAltByAlbumIds
                           ,'queryAlbums
                           ,'queryAlbumMap
                           ,'queryArtistMap
@@ -419,6 +463,20 @@ getArtist acid id = do
     case qr of
         Nothing        -> return Nothing
         Just (_,album) -> return $ Just $ cacheToArtist album id
+
+getArtAlts :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe [ArtAlt])
+getArtAlts acid id = do
+    qr <- query' acid (QueryArtAltByAlbumId id)
+    case qr of
+        Nothing         -> return Nothing
+        Just (_,(ArtAltData arts))   -> return $ Just arts
+
+getMetaData :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe MetaData)
+getMetaData acid id = do
+    qr <- query' acid (QueryMetaDataByAlbumId id)
+    case qr of
+        Nothing         -> return Nothing
+        Just (_,md)     -> return $ Just md
 
 getArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe (B.ByteString, String))
 getArt acid id = do 
@@ -503,6 +561,12 @@ insertRowAlbumCache acid id ad = update' acid (InsertAlbumCacheData id ad)
 
 insertRowFileCache :: (Monad m, MonadIO m) => AcidState StereoidDb -> B.ByteString -> FileCacheData -> m ()
 insertRowFileCache acid id ad = update' acid (InsertFileCacheData id ad)
+
+insertRowArtAltDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> ArtAltData -> m ()
+insertRowArtAltDb acid id ad = update' acid (InsertArtAltData id ad)
+
+insertRowMetaDataDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> MetaData -> m ()
+insertRowMetaDataDb acid id ad = update' acid (InsertMetaData id ad)
 
 insertRowAlbumArtDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> AlbumArtData -> m ()
 insertRowAlbumArtDb acid id ad = update' acid (InsertAlbumArtData id ad)

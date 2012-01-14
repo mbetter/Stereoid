@@ -75,6 +75,24 @@ data AlbumMapData = AlbumMapData { almdTitle :: T.Text
 data ArtistMapData = ArtistMapData { armdName :: T.Text
                                    } deriving (Show,Eq,Ord,Typeable)
 
+data Wiki = Wiki { wSummary :: T.Text
+                 , wContent :: T.Text
+                 } deriving (Show,Eq,Ord,Typeable)
+
+data MetaData = MetaData { mdMbid :: Maybe T.Text
+                         , mdTags :: [T.Text]
+                         , mdWiki :: Maybe Wiki
+                         } deriving (Show,Eq,Ord,Typeable)
+
+mdEmpty = MetaData Nothing [] Nothing
+
+data ArtAlt = FileArt B.ByteString B.ByteString |
+              LastFMArt T.Text B.ByteString deriving (Show,Eq,Ord,Typeable)
+
+data ArtAltData = ArtAltData [ArtAlt] deriving (Show,Eq,Ord,Typeable)
+
+                       
+
 data SongDb     = SongDb !(IntMap.IntMap     SongData) deriving (Typeable)
 data AlbumDb    = AlbumDb !(IntMap.IntMap    AlbumData) deriving (Typeable)
 data ArtistDb   = ArtistDb !(IntMap.IntMap   ArtistData) deriving (Typeable)
@@ -87,6 +105,8 @@ data AlbumMap = AlbumMap !(Map.Map AlbumMapData Int) deriving (Typeable)
 data ArtistMap = ArtistMap !(Map.Map ArtistMapData Int) deriving (Typeable)
 data ArtistTrie = ArtistTrie !(Trie.Trie [Int]) deriving (Typeable)
 data SongTrie = SongTrie !(Trie.Trie [Int]) deriving (Typeable)
+data MetaDataDb = MetaDataDb !(IntMap.IntMap MetaData) deriving (Typeable)
+data ArtAltDb = ArtAltDb !(IntMap.IntMap ArtAltData) deriving (Typeable)
 
 
 data Stats = Stats { statsArtistCount :: Int
@@ -114,6 +134,8 @@ data StereoidDb = StereoidDb { sdbSongs   ::     SongDb
                              , sdbStats       :: Stats
                              , sdbArtistTrie :: ArtistTrie
                              , sdbSongTrie :: SongTrie
+                             , sdbArtAlt :: ArtAltDb
+                             , sdbMetaData :: MetaDataDb
                              } deriving (Typeable)
 
 
@@ -131,5 +153,7 @@ sdbEmpty = StereoidDb { sdbSongs = (SongDb IntMap.empty)
                       , sdbStats = sdbStatsEmpty
                       , sdbArtistTrie = (ArtistTrie Trie.empty)
                       , sdbSongTrie = (SongTrie Trie.empty)
+                      , sdbArtAlt = (ArtAltDb IntMap.empty)
+                      , sdbMetaData = (MetaDataDb IntMap.empty)
                       }
 

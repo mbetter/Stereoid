@@ -6,12 +6,12 @@ import qualified Data.Text as T
 data LastFMResponse = LastFMResponse { album :: Album } deriving (Show)
 
 data Album = Album { name :: T.Text
-                   , artist :: T.Text
-                   , mbid :: T.Text
-                   , image :: [Image]
-                   , listeners :: T.Text
-                   , playcount :: T.Text
-                   , toptags :: Tags
+                   , artist :: Maybe T.Text
+                   , mbid :: Maybe T.Text
+                   , image :: Maybe [Image]
+                   , listeners :: Maybe T.Text
+                   , playcount :: Maybe T.Text
+                   , toptags :: Maybe Tags
                    , wiki :: Maybe Wiki
                    } deriving (Show)
 data Image = Image { text :: T.Text
