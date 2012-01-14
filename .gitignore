@@ -1,0 +1,8 @@
+*.o
+*.hi
+*.json
+Main
+art/
+thumb/
+state/
+*.swp
