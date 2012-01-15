@@ -75,8 +75,9 @@ data Wiki = Wiki { summary :: T.Text
                  } deriving (Show)
                  -}
 lastToPersistence :: Album -> (P.ArtAltData, P.MetaData)
-lastToPersistence (Album n a m i l p t w)  = (aad i, md)
-                                             where aad is = 
+lastToPersistence (Album _ _ m i _ _ t w)  = (aad i, md m t w)
+                                             where aad is = P.ArtAltData $ map (\x -> (P.LastFMArt (size x) (text x))) is 
+                                                   md mb ta wi = 
 {-
 getAlbumInfo ::  String -> String -> IO Maybe (P.ArtAltData, P.MetaData)
 getAlbumInfo artist album = do

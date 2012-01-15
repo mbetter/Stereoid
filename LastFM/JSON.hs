@@ -18,7 +18,7 @@ instance FromJSON Album where
                            v .: "name" <*>
                            v .:? "artist" <*>
                            v .:? "mbid" <*>
-                           v .:? "image" <*>
+                           v .: "image" <*>
                            v .:? "listeners" <*>
                            v .:? "playcount" <*>
                            v .:? "toptags" <*>

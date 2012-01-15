@@ -1,3 +1,28 @@
+var api = { 
+    base_url : "http://core.lan/api",
+    session_timeout : 15 * 60 * 1000,
+};
+
+var debug = false;
+var cache_enabled = true;
+var cache = new Array();
+
+function debug_log (msg) { if (debug) { console.log(msg); } }
+
+var kinetic_moving = false;
+var isAnimating = false;
+var minrow = 0;
+var maxrow = 0;
+var mincol = -5; 
+var maxcol = 5;
+var current = null;
+
+var maxrows = 8;
+var maxcolumns = 12;
+
+var pwidth = 202;
+var pheight = 202;
+
 /* Compile markup as named templates */
 $.template( "albumTemplate", '<a href="#"><span class="a">{{=albumArtistName}}</span><img src="{{=albumArtThumbUrl}}" /><span class="b">{{=albumTitle}}</span></a>');
 $.template( "contentWrapperTemplate", '<div id="content-preview" class="content-preview"><div id="content-wrapper"></div><div id="content-bg" style="display:none;"></div></div>');
@@ -16,19 +41,17 @@ $.template( "playlistSongTemplate", '<span class="pl_title normal">{{=songName}}
 $.template( "filterTemplate", '<div id="filter"><form id="filterform" action="javascript:void(0)"><input type="text" name="filterstring" id="filterblock" title="Filter string" class="u1" /></form></div>');
 $.template( "loginTemplate", '<div id="login"><form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /><span id="rememberme"><input type="checkbox" name="remember" id="remcheck" title="Remember me" />Remember me</span></form></div>');
 $.template( "controlTemplate", '<div id="player-controls"><a id="pc-prev" href="javascript:void(0)"></a><a id="pc-play" href="javascript:void(0)"></a><a id="pc-pause" href="javascript:void(0)"></a><a id="pc-stop" href="javascript:void(0)"></a><a id="pc-next" href="javascript:void(0)"></a></div>');
-$.template( "controlTemplate2", '<div id="np-controls"><a id="np-prev" href="javascript:void(0)"></a><a id="np-play" href="javascript:void(0)"></a><a id="np-next" href="javascript:void(0)"></a></div>');
 $.template( "resultAlbumTemplate", '<div class="result-album"><div class="result-albumtop"><span class="result-title">{{=albumTitle}}</span></div><a href="javascript:void(0)" class="result-play" id="ralb_{{=albumID}}" ><img class="result-art" src="{{=albumArtThumbUrl}}" /></a><div class="result-albumbottom"><span class="result-artist">{{=albumArtistName}}</span></div></div>');
 
-session_timeout = 14 * 60 * 1000;
 updating_session = false;
 seed = Math.round((new Date()).getTime() / 1000);
 var t;
 
 function keepSessionAlive () {
     $.ajax({
-        url: "http://core.lan/api/sessions",
+        url: api.base_url + '/sessions',
         success: function(data){
-            t=setTimeout("keepSessionAlive()",session_timeout);
+            t=setTimeout("keepSessionAlive()",api.session_timeout - (1 * 60 * 1000));
         },
         error: function(data){
             clearTimeout(t);
@@ -39,7 +62,7 @@ function keepSessionAlive () {
 
 function loadAlbum(x,y) {
     $.ajax({
-        url: "http://core.lan/api/albums?sort=random&seed=" + seed + "&limit=1&offset=" + rose(x,y),
+        url: api.base_url + "/albums?sort=random&seed=" + seed + "&limit=1&offset=" + rose(x,y),
         context: $("#filler_" + x + "_" + y),
         success: function(data){
             var item = $(this);
@@ -49,24 +72,113 @@ function loadAlbum(x,y) {
     });
 }
 
-function loadAlbumRange(begin,end,divs) {
-    var limit = end - begin + 1;
-    $.ajax({
-        url: "http://core.lan/api/albums?sort=random&seed=" + seed + "&limit=" + limit + "&offset=" + begin,
-        success: function(data){
-            if (divs.length > data.length) {
-                for(var i = data.length; i < divs.length; i++) {
-                    $('#' + divs[i]).empty();
-                }    
-            }
-            for(var i = 0; i < data.length; i++) {
-                var d = $('#' + divs[i]);
-                d.html( $.render( data[i], "albumTemplate"));
-                d.data("json",data[i]);
-            }
+function loadCacheRange(begin,end) {
+    if (cache_enabled) {
+        var count = end - begin + 1;
+        while (cache[begin] && count) {
+            begin++;
+            count--;
         }
-    });
+        while (cache[end] && count) {
+            end--;
+            count--;
+        }
+        if (count) {
+            $.ajax({
+                url: api.base_url + "/albums?sort=random&seed=" + seed + "&limit=" + count + "&offset=" + begin,
+                success: function(data){
+                    for(var i = 0; i < data.length; i++) {
+                       cache[begin + i] = data[i];
+                    }
+                }
+            });
+        }    
+    }
+}
 
+function cachePrime() {
+    debug_log('cachePrime()');
+    var queued = new Array();
+    var toprow = maxrow + 1;
+    var bottomrow = minrow - 1;
+    var rightcol = maxcol + 1;
+    var leftcol = mincol - 1;
+
+    for (var i=leftcol; i <= rightcol; i++) {
+        queued.push( rose(i,toprow) );
+        queued.push( rose(i,bottomrow) );
+    }
+    for (var i=minrow; i <= maxrow; i++) {
+        queued.push( rose(leftcol,i) );
+        queued.push( rose(rightcol,i) );
+    }
+
+    queued.sort();
+    
+    var lr;
+    var start, end, startx;
+    var pending = false;
+    for (var i=0; i < queued.length; i++) {
+        var ro = queued[i];
+        if (!lr) {
+            lr = ro;
+            start = lr;
+            end = lr;
+        } else if (ro == (lr + 1)) {
+            lr = ro;
+            end = lr;
+        } else {
+            loadCacheRange(start, end);
+            lr = ro;
+            start = lr;
+            startx = i;
+            end = lr;
+        }
+    }
+
+    loadCacheRange(start,end);
+}
+
+function loadAlbumRange(begin,end,divs) {
+    if (cache_enabled) {
+        while (cache[begin] && divs.length) {
+            debug_log('cache hit: ' + begin);
+            var id = divs.shift();
+            debug_log(id);
+            var d = $('#' + id);
+            d.html( $.render( cache[begin], "albumTemplate"));
+            d.data("json",cache[begin]);
+            begin++;
+        }
+        while (cache[end] && divs.length) {
+            debug_log('cache hit: ' + end);
+            var id = divs.pop();
+            debug_log(id);
+            var d = $('#' + id);
+            d.html( $.render( cache[end], "albumTemplate"));
+            d.data("json",cache[end]);
+            end--;
+        }
+    }
+    if (divs.length) {
+        var limit = end - begin + 1;
+        $.ajax({
+            url: api.base_url + "/albums?sort=random&seed=" + seed + "&limit=" + limit + "&offset=" + begin,
+            success: function(data){
+                if (divs.length > data.length) {
+                    for(var i = data.length; i < divs.length; i++) {
+                        $('#' + divs[i]).empty();
+                    }    
+                }
+                for(var i = 0; i < data.length; i++) {
+                    var d = $('#' + divs[i]);
+                    d.html( $.render( data[i], "albumTemplate"));
+                    d.data("json",data[i]);
+                    if (cache_enabled) { cache[begin + i] = data[i]; }
+                }
+            }
+        });
+    }
 }
 function showPlaylist() {
     $('#rightbar').append( $.render( {}, "playlistTemplate") );
@@ -104,14 +216,14 @@ function albumReq(url) {
 function artistAlbums() {
     //e.preventDefault();
     var artistID = currentdata.albumArtistID;
-    var url = "http://core.lan/api/artists/" + artistID + "/albums";
+    var url = api.base_url + "/artists/" + artistID + "/albums";
     albumReq(url);
     return false;
 }
 function filterArtistAlbums (filter) {
    if (filter) {
        blankContentScreen();
-       albumReq("http://core.lan/api/albums/?artist=" + filter); 
+       albumReq(api.base_url + "/albums/?artist=" + filter); 
    } else {
        closeImgPreview();
    }
@@ -190,7 +302,7 @@ function g_authenticate() {
     if (username && logintoken) {
         $.ajax({
             type: 'PUT', 
-            url: 'http://core.lan/api/sessions',
+            url: api.base_url + '/sessions',
             data: {
                     'username'   : username,
                     'logintoken' : logintoken
@@ -221,7 +333,7 @@ function r_authenticate() {
     if (username && logintoken) {
         $.ajax({
             type: 'PUT', 
-            url: 'http://core.lan/api/sessions',
+            url: api.base_url + '/sessions',
             data: {
                     'username'   : username,
                     'logintoken' : logintoken
@@ -249,7 +361,7 @@ function l_authenticate(username,password,remember) {
 
     var ts = Math.round((new Date()).getTime() / 1000);
     var auth = Sha1.hash(Sha1.hash(password) + ts);
-    var authurl = 'http://core.lan/api/sessions'
+    var authurl = api.base_url + '/sessions'
     if ($("#remcheck:checked").val()) {
         authurl += '?rememberme=true'
     }
@@ -520,19 +632,6 @@ closeImgPreview             = function() {
 }
 
 
-kinetic_moving = false;
-isAnimating = false;
-minrow = 0;
-maxrow = 0;
-mincol = -5; 
-maxcol = 5;
-current = null;
-
-maxrows = 8;
-maxcolumns = 12;
-
-pwidth = 202;
-pheight = 202;
 
 $(document).ready(function () {
     r_authenticate(); 
@@ -650,7 +749,7 @@ function attachFilterEvents() {
         keyT = setTimeout(function(){
            var v = $("#filterblock").val();
            filterArtistAlbums(v);
-           songsAjax("http://core.lan/api/songs?title=" + v); 
+           songsAjax(api.base_url + "/songs?title=" + v); 
         },300);
     });
     f.on('keydown',function(e) {
@@ -760,7 +859,9 @@ function loadSite () {
     for(i=i;i<=maxrows;i++) {
         setWrapperSize();
     }
+    cachePrime();
 }
+var scrollT;
 function addScrollEvents(){
     $("#viewport").scroll(function () {
        var vp = $("#viewport");
@@ -797,7 +898,8 @@ function addScrollEvents(){
        if ((toscrollx != "+=0px") || (toscrolly != "+=0px")) {
             vp.scrollTo( { top:toscrolly, left:toscrollx}, 0, $.scrollTo.defaults);
        }
-
+       // clearTimeout(scrollT);
+       // scrollT = setTimeout(cachePrime,150);
     });
 
 }
