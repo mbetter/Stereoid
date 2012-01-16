@@ -27,7 +27,7 @@ var pheight = 202;
 $.template( "albumTemplate", '<a href="#"><span class="a">{{=albumArtistName}}</span><img src="{{=albumArtThumbUrl}}" /><span class="b">{{=albumTitle}}</span></a>');
 $.template( "contentWrapperTemplate", '<div id="content-preview" class="content-preview"><div id="content-wrapper"></div><div id="content-bg" style="display:none;"></div></div>');
 $.template( "infoTemplate", '<h2><a id="album-title" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)">{{=albumTitle}}</a><span id="content-artist">{{=albumArtistName}}</span></h2>');
-$.template( "contentTemplate", '<div id="album-info"><div id="info-top"><a id="album-title" class="album-text" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)" style="display:none;">{{=albumTitle}}</a></div><div id="info-left"></div><div id="info-mid"><a id="play-album" title="Play &ldquo;{{=albumTitle}}&rdquo; now" href="javascript:void(0)"><img id="album-art" src="{{=albumArtUrl}}" /></a></div><div id="info-right"></div><div id="info-bottom"><a id="content-artist" class="album-text" href="javascript:void(0)" style="display:none;"><span>{{=albumArtistName}}</span></a></div></div>');
+$.template( "contentTemplate", '<div id="album-info"><div id="info-top"><a id="album-title" class="album-text" title="Add &ldquo;{{=albumTitle}}&rdquo; to playlist" href="javascript:void(0)" style="display:none;">{{=albumTitle}}</a></div><div id="info-left"></div><div id="info-mid"><a id="play-album" title="Play &ldquo;{{=albumTitle}}&rdquo; now" href="javascript:void(0)"><img id="album-art" src="{{=albumArtUrl}}" /></a></div><div id="info-right"></div><div id="info-bottom"><a id="update-art" href="javascript:void(0)"></a><form id="arturlform" action="javascript:void(0)" style="display:none;"><input type="text" name="arturlbox" id="arturlblock" title="Art URL" class="u1" /></form><a id="content-artist" class="album-text" href="javascript:void(0)" style="display:none;"><span>{{=albumArtistName}}</span></a></div></div>');
 $.template( "songTemplate", '<span class="song-track">{{=songTrack}}</span><a id="playlink_{{=songID}}" href="javascript:void(0)" title="Add &ldquo;{{=songName}}&rdquo; to playlist" class="playsong"><span class="song-name">{{=songName}}</span></a>');
 
 $.template( "resultSongTemplate", '<div class="r_song"><a id="playlink_{{=songID}}" href="javascript:void(0)" title="Add &ldquo;{{=songName}}&rdquo; to playlist" class="playsong">+</a><span class="rs_title">{{=songName}}</span><span class="rs_artist rs_info">{{=songArtistName}}</span><span class="rs_album rs_info">{{=songAlbumTitle}}</span></div>');
@@ -38,6 +38,7 @@ $.template( "nowPlayingTemplate", '<div id="nowplaying"><span id="np_np" class="
 $.template( "playlistTemplate", '<div id="playlist"></div>');
 $.template( "playlistPlayingTemplate", '<div id="pl_playing"><span class ="np_info normal" id="pl_title">{{=songName}}</span><span class ="np_info normal" id="pl_artist">{{=songArtistName}}</span><span class ="np_info normal" id="pl_album">{{=songAlbumTitle}}</span></div>');
 $.template( "playlistSongTemplate", '<span class="pl_title normal">{{=songName}}</span><span class="pl_artist pl_info normal">{{=songArtistName}}</span><span class="pl_album pl_info normal">{{=songAlbumTitle}}</span></div>');
+$.template( "artUrlTemplate", '<form id="arturlform" action="javascript:void(0)"><input type="text" name="arturlbox" id="arturlblock" title="Art URL" class="u1" /></form></div>');
 $.template( "filterTemplate", '<div id="filter"><form id="filterform" action="javascript:void(0)"><input type="text" name="filterstring" id="filterblock" title="Filter string" class="u1" /></form></div>');
 $.template( "loginTemplate", '<div id="login"><form id="loginform" action="javascript:true;"><input type="text" name="username" id="unameblock" title="Enter your username" class="u1" /><input type="password" name="password" id="pwblock" title="Enter your password" class="u1" /><br /></br /><input type="submit" id="submitbtn" value="Submit" /><span id="rememberme"><input type="checkbox" name="remember" id="remcheck" title="Remember me" />Remember me</span></form></div>');
 $.template( "controlTemplate", '<div id="player-controls"><a id="pc-prev" href="javascript:void(0)"></a><a id="pc-play" href="javascript:void(0)"></a><a id="pc-pause" href="javascript:void(0)"></a><a id="pc-stop" href="javascript:void(0)"></a><a id="pc-next" href="javascript:void(0)"></a></div>');
@@ -463,6 +464,11 @@ function setupContent () {
     });
     $('#content-preview').on('click','#content-artist', artistAlbums);
     $('#content-preview').on('click','#album-art', playAlbum);
+    $('#content-preview').on('click','#update-art', function(e){
+        e.preventDefault();
+        $('#arturlform').show().click(function(e){ e.preventDefault(); return false; });
+        return false;
+    });
     $('#content-preview').on('click','#album-title', function(e) {
         e.preventDefault();
         var thisData = $(this).data('json');
@@ -475,6 +481,28 @@ function setupContent () {
         return false;
     });
 }
+function submitAuf() {
+        var token = $.cookie('token'); 
+        var artUrl = $('#album-art').attr('src');
+        if (token) {
+            $.ajax({
+                type: 'POST',
+                data: {
+                        'token' : token,
+                        'url'   : $('#arturlblock').val()
+                      },
+                url: artUrl,
+                success: function(data){
+                    $('#album-art').attr('src', artUrl + "?ts=" + new Date().getTime()); 
+                    return false;
+                },
+                error: function(data){
+                    return false;
+                }
+            });
+        }
+}
+
 function blankContentScreen () {
 
         if (!$('#content-preview').length) { setupContent(); } 
