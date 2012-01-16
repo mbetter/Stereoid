@@ -48,16 +48,23 @@ seed = Math.round((new Date()).getTime() / 1000);
 var t;
 
 function keepSessionAlive () {
-    $.ajax({
-        url: api.base_url + '/sessions',
-        success: function(data){
-            t=setTimeout("keepSessionAlive()",api.session_timeout - (1 * 60 * 1000));
-        },
-        error: function(data){
-            clearTimeout(t);
-            showLogin();
-        }
-    });
+    var token = $.cookie('token'); 
+    if (token) {
+        $.ajax({
+            type: 'PUT',
+            data: {
+                    'token' : token
+                  },
+            url: api.base_url + '/sessions',
+            success: function(data){
+                t=setTimeout("keepSessionAlive()",api.session_timeout - (1 * 60 * 1000));
+            },
+            error: function(data){
+                clearTimeout(t);
+                showLogin();
+            }
+        });
+    }
 }
 
 function loadAlbum(x,y) {
@@ -301,7 +308,7 @@ function g_authenticate() {
 
     if (username && logintoken) {
         $.ajax({
-            type: 'PUT', 
+            type: 'POST', 
             url: api.base_url + '/sessions',
             data: {
                     'username'   : username,
@@ -332,7 +339,7 @@ function r_authenticate() {
 
     if (username && logintoken) {
         $.ajax({
-            type: 'PUT', 
+            type: 'POST', 
             url: api.base_url + '/sessions',
             data: {
                     'username'   : username,
@@ -366,7 +373,7 @@ function l_authenticate(username,password,remember) {
         authurl += '?rememberme=true'
     }
     $.ajax({
-        type: 'PUT', 
+        type: 'POST', 
         url: authurl,
         data: {
                 'username' : username,

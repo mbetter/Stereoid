@@ -478,6 +478,28 @@ getMetaData acid id = do
         Nothing         -> return Nothing
         Just (_,md)     -> return $ Just md
 
+{-
+data AlbumArtData = AlbumArtData { aadMime :: B.ByteString
+                                 , aadArtFile  :: String
+                                 , aadThumbMime :: (Maybe B.ByteString)
+                                 , aadThumbFile :: (Maybe String)
+                                 } deriving (Eq,Ord,Typeable)
+insertRowSongDb acid id ad = update' acid (InsertSongData id ad)
+                                -}
+addThumb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> B.ByteString -> String -> m ()
+addThumb acid id mime file = do
+    qr <- query' acid (QueryArtByAlbumId id)
+    case qr of
+        Nothing  -> update' acid (InsertAlbumArtData id (AlbumArtData mime file (Just mime) (Just file) )) 
+        Just (_,aad) -> update' acid (InsertAlbumArtData id (aad {aadThumbMime = Just mime, aadThumbFile = Just file}) ) 
+                                    
+addArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> B.ByteString -> String -> m ()
+addArt acid id mime file = do
+    qr <- query' acid (QueryArtByAlbumId id)
+    case qr of
+        Nothing  -> update' acid (InsertAlbumArtData id (AlbumArtData mime file Nothing Nothing) ) 
+        Just (_,aad) -> update' acid (InsertAlbumArtData id (aad {aadMime = mime, aadArtFile = file}) ) 
+
 getArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe (B.ByteString, String))
 getArt acid id = do 
     qr <- query' acid (QueryArtByAlbumId id)

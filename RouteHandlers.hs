@@ -15,6 +15,7 @@ import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
+import HTTPClient
 import Database.HDBC
 import Auth
 import Data.Acid
@@ -62,10 +63,13 @@ route sdb users sessions url =
                     (AlbumM3U albumId)      -> chk $ albumSongsM3U sdb albumId
                     (AlbumArt albumId)      -> chk $ serveArt sdb albumId
                     (AlbumArtThumb albumId) -> chk $ serveThumb sdb albumId
-                    (Sessions)              -> chk $ ok (toResponse "Session extended.")
              PUT -> case url of
+                    (Sessions)              -> chk $ ok (toResponse "Session extended.")
                     (Users)                 -> addUser users
+             POST -> case url of
                     (Sessions)              -> authorize users sessions
+                    (AlbumArt albumId)      -> chk $ getArtFromUrl sdb albumId
+                    (AlbumArtThumb albumId) -> chk $ getThumbFromUrl sdb albumId
 
 
 checkToken :: AcidState SessionMap -> Integer -> 
@@ -176,6 +180,28 @@ albumData sdb (AlbumId albumid) = do
         Nothing -> notFound $ toResponse "What you are looking for has not been found."
         Just al -> do alb <- albumAddUrl al
                       ok $ toResponse $ showJSON alb
+
+getArtFromUrl :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
+getArtFromUrl sdb (AlbumId artid) = do
+    url <- look "url"
+    image <- liftIO $ downloadFileWithMime url
+    case image of
+        Left x                  -> notFound $ toResponse "What you are looking for has not been found."
+        Right (Just mime, resp) -> do liftIO $ BS.writeFile (afn artid) resp
+                                      addArt sdb artid mime (afn artid)
+                                      ok $ toResponse "Art added."
+                                      where afn x = ("art/" ++ (show x))
+
+getThumbFromUrl :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
+getThumbFromUrl sdb (AlbumId artid) = do
+    url <- look "url"
+    image <- liftIO $ downloadFileWithMime url
+    case image of
+        Left x                  -> notFound $ toResponse "What you are looking for has not been found."
+        Right (Just mime, resp) -> do liftIO $ BS.writeFile (afn artid) resp
+                                      addThumb sdb artid mime (afn artid)
+                                      ok $ toResponse "Thumb added."
+                                      where afn x = ("thumb/" ++ (show x))
 
 serveArt :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
 serveArt sdb (AlbumId artid) = do
