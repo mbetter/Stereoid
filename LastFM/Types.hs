@@ -12,7 +12,7 @@ data Album = Album { name :: T.Text
                    , image :: [Image]
                    , listeners :: Maybe T.Text
                    , playcount :: Maybe T.Text
-                   , toptags :: Maybe Tags
+                   , toptags :: Tags
                    , wiki :: Maybe Wiki
                    } deriving (Show)
 data Image = Image { text :: B.ByteString

@@ -10,6 +10,7 @@ import Data.Aeson
 import LastFM.JSON
 import LastFM.Types
 import qualified Persistence.Types as P
+import qualified Data.Text as T
 
 downloadURL :: String -> IO (Either String BL.ByteString)
 downloadURL url =
@@ -35,8 +36,8 @@ lastFMUrl = "http://ws.audioscrobbler.com/2.0/?format=json"
 
 apiKey = "bdb236f5de89510054e48b6058f84713"
 
-buildAlbumUrl :: String -> String -> String -> String
-buildAlbumUrl key art alb = lastFMUrl ++ "&method=album.getinfo&api_key=" ++ key ++ "&artist=" ++ (urlEncode art) ++ "&album=" ++ (urlEncode alb)
+buildAlbumUrl :: String -> T.Text -> T.Text -> String
+buildAlbumUrl key art alb = lastFMUrl ++ "&method=album.getinfo&api_key=" ++ key ++ "&artist=" ++ (urlEncode $ T.unpack $ T.toLower art) ++ "&album=" ++ (urlEncode $ T.unpack $ T.toLower alb)
 
 {-
 data Wiki = Wiki { wSummary :: T.Text
@@ -77,13 +78,22 @@ data Wiki = Wiki { summary :: T.Text
 lastToPersistence :: Album -> (P.ArtAltData, P.MetaData)
 lastToPersistence (Album _ _ m i _ _ t w)  = (aad i, md m t w)
                                              where aad is = P.ArtAltData $ map (\x -> (P.LastFMArt (size x) (text x))) is 
-                                                   md mb ta wi = 
-{-
-getAlbumInfo ::  String -> String -> IO Maybe (P.ArtAltData, P.MetaData)
+                                                   md mb ta wi = P.MetaData (fmap id mb) (map tName (tags ta)) (fmap f wi)
+                                                   f wi = P.Wiki (summary wi) (content wi)
+
+getAlbumInfo ::  T.Text -> T.Text -> IO (Maybe (P.ArtAltData, P.MetaData))
 getAlbumInfo artist album = do
     let url = buildAlbumUrl apiKey artist album
     r <- downloadURL url
--}
+    case r of
+        Left x     -> return Nothing
+        Right resp -> do
+                let lfmr = decode resp :: Maybe LastFMResponse
+                case lfmr of
+                    Just (LastFMResponse album) -> return $ Just (lastToPersistence album)
+                    _                           -> return Nothing
+
+{-
 main :: IO ()
 main = do
         let f = buildAlbumUrl "bdb236f5de89510054e48b6058f84713" "HELLOWEEN" "KEEPER OF THE SEVEN KEYS PART 2"
@@ -93,3 +103,4 @@ main = do
             Right resp -> do
                             let json = decode resp :: Maybe LastFMResponse
                             print json
+-}

@@ -16,6 +16,7 @@ import System.Directory (doesFileExist)
 import System.IO.Error (isDoesNotExistError)
 import Control.Monad
 import Persistence
+import Persistence.Types
 import Audio.TagLib.TagLib
 import qualified Codec.Binary.UTF8.String as UTF8
 import qualified Sound.TagLib as TagLib
@@ -161,6 +162,20 @@ addToStereoidDb fp sdb = do
     buildAlbumCache sdb
     putStrLn "rebuilding artist cache..."
     buildArtistCache sdb
+    putStrLn "Building album map..."
+    buildAlbumMap sdb
+    putStrLn "Building artist map..."
+    buildArtistMap sdb
+    putStrLn "Building artist trie..."
+    buildArtistTrie sdb
+    putStrLn "Building song cache ..."
+    buildSongCache sdb
+    putStrLn "Building song trie ..."
+    buildSongTrie sdb
+    putStrLn "Building stats..."
+    buildStats sdb
+    putStrLn "Done!"
+
     where takeMp3 x = (takeExtension x) == ".mp3"
           doTag s x = do
                 fc <- getFileCacheData s (C.pack x) 

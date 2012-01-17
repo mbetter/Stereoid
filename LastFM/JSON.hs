@@ -21,7 +21,7 @@ instance FromJSON Album where
                            v .: "image" <*>
                            v .:? "listeners" <*>
                            v .:? "playcount" <*>
-                           v .:? "toptags" <*>
+                           v .: "toptags" <*>
                            v .:? "wiki"
     parseJSON _          = empty
 instance FromJSON Image where

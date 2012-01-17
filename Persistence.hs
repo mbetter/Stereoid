@@ -25,7 +25,7 @@ import qualified Data.Map as Map
 import qualified Data.IntMap as IntMap
 import qualified Data.Set as Set
 import qualified Data.ByteString.UTF8 as B
-
+import qualified LastFM.Request as LastFM
 deriving instance Typeable1 (Trie.Trie)
 
 $(deriveSafeCopy 0 'base ''SongData)
@@ -260,6 +260,9 @@ queryAlbumMap = (withDb albumMap) . Map.lookup
 queryFileCache :: B.ByteString -> Query StereoidDb (Maybe FileCacheData)
 queryFileCache = (withDb fileCache) . Map.lookup
 
+queryAlbumArt :: Query StereoidDb (IntMap.IntMap AlbumArtData)
+queryAlbumArt = getDb albumArtDb
+
 queryFiles :: Query StereoidDb (Map.Map B.ByteString FileCacheData)
 queryFiles = getDb fileCache
 
@@ -402,6 +405,7 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'queryMetaDataByAlbumIds
                           ,'queryArtAltByAlbumIds
                           ,'queryAlbums
+                          ,'queryAlbumArt
                           ,'queryAlbumMap
                           ,'queryArtistMap
                           ,'queryArtistTrie
@@ -607,6 +611,22 @@ insertRowAlbumMap acid md id = update' acid (InsertAlbumMapData md id)
 
 insertRowArtistMap :: (Monad m, MonadIO m) => AcidState StereoidDb -> ArtistMapData -> Int -> m ()
 insertRowArtistMap acid md id = update' acid (InsertArtistMapData md id)
+
+updateAlbumInfoFromLastFm :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m ()
+updateAlbumInfoFromLastFm acid id = do
+    qr <- query' acid (QueryAlbumCacheByAlbumId id)
+    case qr of
+        Nothing        -> return ()
+        Just (_,album) -> do 
+            lr <- liftIO $ LastFM.getAlbumInfo (E.decodeUtf8 $ alcdArtistName album) (E.decodeUtf8 $ alcdTitle album)
+            case lr of
+                Nothing       -> return ()
+                Just ((ArtAltData x),md) -> do
+                    altd <- query' acid (QueryArtAltByAlbumId id)
+                    case altd of 
+                        Nothing                    -> update' acid (InsertArtAltData id (ArtAltData x))
+                        Just (_,(ArtAltData alts)) -> update' acid (InsertArtAltData id (ArtAltData $ alts ++ x ))
+                    update' acid (InsertMetaData id md)
 
 buildArtistMap :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
 buildArtistMap acid = do
