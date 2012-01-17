@@ -481,15 +481,8 @@ getMetaData acid id = do
     case qr of
         Nothing         -> return Nothing
         Just (_,md)     -> return $ Just md
-
-{-
-data AlbumArtData = AlbumArtData { aadMime :: B.ByteString
-                                 , aadArtFile  :: String
-                                 , aadThumbMime :: (Maybe B.ByteString)
-                                 , aadThumbFile :: (Maybe String)
-                                 } deriving (Eq,Ord,Typeable)
-insertRowSongDb acid id ad = update' acid (InsertSongData id ad)
-                                -}
+                                
+-- | Modify album art data in acid store to include thumbnail. If record does not exist, uses thumbnail as art as well.
 addThumb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> B.ByteString -> String -> m ()
 addThumb acid id mime file = do
     qr <- query' acid (QueryArtByAlbumId id)
@@ -497,6 +490,7 @@ addThumb acid id mime file = do
         Nothing  -> update' acid (InsertAlbumArtData id (AlbumArtData mime file (Just mime) (Just file) )) 
         Just (_,aad) -> update' acid (InsertAlbumArtData id (aad {aadThumbMime = Just mime, aadThumbFile = Just file}) ) 
                                     
+-- | Modify album art data in acid store. If thumbnail does not currently exist, sets it to Nothing.
 addArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> B.ByteString -> String -> m ()
 addArt acid id mime file = do
     qr <- query' acid (QueryArtByAlbumId id)
@@ -504,6 +498,7 @@ addArt acid id mime file = do
         Nothing  -> update' acid (InsertAlbumArtData id (AlbumArtData mime file Nothing Nothing) ) 
         Just (_,aad) -> update' acid (InsertAlbumArtData id (aad {aadMime = mime, aadArtFile = file}) ) 
 
+-- | Retrieves album art data from acid store, returning Maybe (MIME :: Bytestring, FilePath :: String)
 getArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe (B.ByteString, String))
 getArt acid id = do 
     qr <- query' acid (QueryArtByAlbumId id)
@@ -511,6 +506,7 @@ getArt acid id = do
         Nothing        -> return Nothing
         Just (_,artdata) -> return $ Just $ (aadMime artdata,aadArtFile artdata)
 
+-- | Retrieves album thumbnail data from acid store, returning Maybe (MIME :: Bytestring, FilePath :: String)
 getThumb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe (B.ByteString, String))
 getThumb acid id = do 
     qr <- query' acid (QueryArtByAlbumId id)
@@ -521,6 +517,7 @@ getThumb acid id = do
                                   f AlbumArtData { aadThumbFile = Nothing } = Nothing
                                   f AlbumArtData { aadThumbMime = Just mime, aadThumbFile = Just file } = Just (mime,file)
 
+-- | Retrives Map FilePath :: Bytestring FileCacheData
 getFileCache :: (Monad m, MonadIO m) => AcidState StereoidDb -> m (Map.Map B.ByteString FileCacheData)
 getFileCache acid = query' acid (QueryFiles)
 
@@ -540,13 +537,16 @@ getSongsByAlbumId acid id = do
 getAlbumsRandom :: (Monad m, MonadIO m) => AcidState StereoidDb -> (Int,Int) -> Int -> m [Album]
 getAlbumsRandom acid ol seed = do
     stats <- query' acid (QueryStats)
-    getAlbumsSorted acid (sortRandom seed (statsAlbumCount stats)) ol
+    getAlbumsSortedBy acid (sortRandom seed (statsAlbumCount stats)) ol
 
-sortRandom :: Int -> Int -> [(Int,AlbumCacheData)] -> [(Int,AlbumCacheData)]
+-- |sortRandom takes Seed :: Int and Count :: Int as add'l parameters.
+sortRandom :: Int -> Int -> [(Int,a)] -> [(Int,a)]
 sortRandom seed count albums = shuffle' albums count (mkStdGen seed)
 
-getAlbumsSorted :: (Monad m, MonadIO m) => AcidState StereoidDb -> ([(Int,AlbumCacheData)] -> [(Int,AlbumCacheData)]) -> (Int,Int) -> m [Album]
-getAlbumsSorted acid sort (offset,limit) = do 
+-- | Get list of albums sorted by an arbitray function.
+-- Sort functions, in general, should be functions with type [(Int,a)] -> [(Int,a)]
+getAlbumsSortedBy :: (Monad m, MonadIO m) => AcidState StereoidDb -> ([(Int,AlbumCacheData)] -> [(Int,AlbumCacheData)]) -> (Int,Int) -> m [Album]
+getAlbumsSortedBy acid sort (offset,limit) = do 
     albums <- query' acid (QueryAlbumCache)
     return $ map f (take limit $ drop offset $ sort $ IntMap.toList albums)
         where f (id, alb) = cacheToAlbum alb id
