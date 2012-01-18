@@ -466,7 +466,8 @@ function setupContent () {
     $('#content-preview').on('click','#album-art', playAlbum);
     $('#content-preview').on('click','#update-art', function(e){
         e.preventDefault();
-        $('#arturlform').show().click(function(e){ e.preventDefault(); return false; });
+        // $('#arturlform').show().click(function(e){ e.preventDefault(); return false; });
+        submitAuf();
         return false;
     });
     $('#content-preview').on('click','#album-title', function(e) {
@@ -489,7 +490,6 @@ function submitAuf() {
                 type: 'POST',
                 data: {
                         'token' : token,
-                        'url'   : $('#arturlblock').val()
                       },
                 url: artUrl,
                 success: function(data){

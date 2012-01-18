@@ -6,3 +6,4 @@ art/
 thumb/
 state/
 *.swp
+LastFM/ApiKey.hs

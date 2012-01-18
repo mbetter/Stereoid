@@ -81,13 +81,16 @@ cacheToArtist ArtistCacheData { arcdName = name } id = DS.Artist { DS.artistID =
                                                                  , DS.artistName = name
                                                                  }
 
+-- | Flips an IntMap to a Map, used for generating indexes for reverse lookups
 flipIntMap :: Eq a => IntMap.IntMap a -> Map.Map a Int
 flipIntMap x = Map.fromAscList $ zip (IntMap.elems x) (IntMap.keys x)
 
+-- | IntMap lookup and return Maybe (key,value)
 imQ :: IntMap.IntMap a -> Int -> Maybe (Int, a)
 imQ im id = g id $ IntMap.lookup id im
             where g = fmap . (,)
 
+-- | IntMap lookup by a list of keys and return a list of (key,value)
 imQs :: [Int] -> IntMap.IntMap a -> [(Int,a)]
 imQs i s = mapMaybe (imQ s) i
 
@@ -130,6 +133,8 @@ mkSong SongData { sodName     =  sn
                                      , songDuration   =  sd
                                      }
 
+-- | Db unwrap function, used with getDb / withDb to pull the structure of a StereoidDb member out of StereoidDb.
+-- Similar functions exist for all StereoidDb members.
 songDb :: StereoidDb -> IntMap.IntMap SongData
 songDb StereoidDb {sdbSongs = SongDb x} = x
 albumDb StereoidDb {sdbAlbums = AlbumDb x} = x
@@ -147,14 +152,17 @@ artAltDb StereoidDb {sdbArtAlt = ArtAltDb x} = x
 metaDataDb StereoidDb {sdbMetaData = MetaDataDb x} = x
 stats StereoidDb { sdbStats = x } = x
 
+-- | Used with an unwrap function to apply a function on the internals of a StereoidDb member.
 withDb :: (StereoidDb -> a) -> (a -> b) -> Query StereoidDb b
 withDb unw f = do db <- ask
                   return $ (f . unw) db
 
+-- | Used with an unwrap function to pull the entirety of a StereoidDb member.
 getDb :: (StereoidDb -> a) -> Query StereoidDb a
 getDb f = do db <- ask
              return $ f db
 
+-- | Primary key query function. Tons of these out there.
 queryArtAltByAlbumId :: Int -> Query StereoidDb (Maybe (Int,ArtAltData))
 queryArtAltByAlbumId = (withDb artAltDb) . (flip imQ) 
 
@@ -173,15 +181,23 @@ querySongBySongId = (withDb songDb) . (flip imQ)
 querySongsBySongIds :: [Int] -> Query StereoidDb [(Int,SongData)]
 querySongsBySongIds = (withDb songDb) . imQs
 
+-- | Takes a record accessor and turns it into a foreign key predicate.
 fKey :: Eq b => (a -> b) -> b -> a -> Bool
 fKey f b a = (f a) == b
 
+-- | Filters an IntMap by a predicate and returns it as a (key,value) list.
 imFilterList :: (a -> Bool) -> IntMap.IntMap a -> [(Int,a)]
 imFilterList p = IntMap.toList . (IntMap.filter p)
 
+-- | Compose this function with a foreign key funcition to get a foreign key song query function, ex:
+-- @
+--   querySongsByForeignKey . (fKey sodAlbumId)
+-- @
 querySongsByForeignKey :: (SongData -> Bool) -> Query StereoidDb [(Int,SongData)]
 querySongsByForeignKey p = (withDb songDb) $ (imFilterList $ p)
 
+-- | Foreign key query function. Common functions have their own indices built so these shouldn't have to 
+-- be used all that much.
 querySongsByAlbumId :: Int -> Query StereoidDb [(Int,SongData)]
 querySongsByAlbumId = querySongsByForeignKey . (fKey sodAlbumId)
 
@@ -498,6 +514,13 @@ addArt acid id mime file = do
         Nothing  -> update' acid (InsertAlbumArtData id (AlbumArtData mime file Nothing Nothing) ) 
         Just (_,aad) -> update' acid (InsertAlbumArtData id (aad {aadMime = mime, aadArtFile = file}) ) 
 
+getArtData :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe AlbumArtData)
+getArtData acid id = do 
+    qr <- query' acid (QueryArtByAlbumId id)
+    case qr of
+        Nothing        -> return Nothing
+        Just (_,artdata) -> return $ Just artdata
+
 -- | Retrieves album art data from acid store, returning Maybe (MIME :: Bytestring, FilePath :: String)
 getArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe (B.ByteString, String))
 getArt acid id = do 
@@ -612,21 +635,41 @@ insertRowAlbumMap acid md id = update' acid (InsertAlbumMapData md id)
 insertRowArtistMap :: (Monad m, MonadIO m) => AcidState StereoidDb -> ArtistMapData -> Int -> m ()
 insertRowArtistMap acid md id = update' acid (InsertArtistMapData md id)
 
-updateAlbumInfoFromLastFm :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m ()
+{-
+updateAlbumInfoFromLastFm :: AcidState StereoidDb -> Int -> IO ()
 updateAlbumInfoFromLastFm acid id = do
-    qr <- query' acid (QueryAlbumCacheByAlbumId id)
+    qr <- query acid (QueryAlbumCacheByAlbumId id)
     case qr of
         Nothing        -> return ()
         Just (_,album) -> do 
-            lr <- liftIO $ LastFM.getAlbumInfo (E.decodeUtf8 $ alcdArtistName album) (E.decodeUtf8 $ alcdTitle album)
+            lr <- LastFM.getAlbumInfo (E.decodeUtf8 $ alcdArtistName album) (E.decodeUtf8 $ alcdTitle album)
             case lr of
                 Nothing       -> return ()
                 Just ((ArtAltData x),md) -> do
-                    altd <- query' acid (QueryArtAltByAlbumId id)
+                    altd <- query acid (QueryArtAltByAlbumId id)
                     case altd of 
-                        Nothing                    -> update' acid (InsertArtAltData id (ArtAltData x))
-                        Just (_,(ArtAltData alts)) -> update' acid (InsertArtAltData id (ArtAltData $ alts ++ x ))
-                    update' acid (InsertMetaData id md)
+                        Nothing                    -> update acid (InsertArtAltData id (ArtAltData x))
+                        Just (_,(ArtAltData alts)) -> update acid (InsertArtAltData id (ArtAltData $ alts ++ x ))
+                    update acid (InsertMetaData id md)
+
+testL :: AcidState StereoidDb -> Int -> IO ()
+testL acid id = do
+    qr <- query acid (QueryAlbumCacheByAlbumId id)
+    case qr of
+        Nothing        -> return ()
+        Just (_,album) -> do 
+            lr <- LastFM.getAlbumInfo (E.decodeUtf8 $ alcdArtistName album) (E.decodeUtf8 $ alcdTitle album)
+            print $ show lr
+
+getLastFmInfo :: AcidState StereoidDb -> Int -> IO (Maybe (ArtAltData, MetaData))
+getLastFmInfo acid id = do
+    altd <- query acid (QueryArtAltByAlbumId id)
+    md <- query acid (QueryMetaDataByAlbumId id)
+    case (altd,md) of
+        (_, Nothing) -> return Nothing
+        (Nothing, _) -> return Nothing
+        ((Just (_,ad)),(Just (_,m))) -> return $ Just (ad,m)
+ -}   
 
 buildArtistMap :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
 buildArtistMap acid = do

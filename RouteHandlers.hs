@@ -21,6 +21,9 @@ import Auth
 import Data.Acid
 import Data.Acid.Advanced
 import Text.JSON
+import LastFM.Request
+import System.Process
+import System.Exit  ( ExitCode(..) )
 import Control.Applicative (optional)
 import Control.Monad.Trans     (MonadIO, liftIO)
 import Happstack.Server        (port      , Response     , ServerPartT, ok           , toResponse
@@ -62,14 +65,14 @@ route sdb users sessions url =
                     (AlbumSongs albumId)    -> chk $ albumSongs sdb albumId
                     (AlbumM3U albumId)      -> chk $ albumSongsM3U sdb albumId
                     (AlbumArt albumId)      -> chk $ serveArt sdb albumId
-                    (AlbumArtThumb albumId) -> chk $ serveThumb sdb albumId
+                    (AlbumArtThumb albumId) -> chk $ serveGenThumb sdb albumId
              PUT -> case url of
                     (Sessions)              -> chk $ ok (toResponse "Session extended.")
                     (Users)                 -> addUser users
              POST -> case url of
                     (Sessions)              -> authorize users sessions
                     (AlbumArt albumId)      -> chk $ getArtFromUrl sdb albumId
-                    (AlbumArtThumb albumId) -> chk $ getThumbFromUrl sdb albumId
+     --               (AlbumArtThumb albumId) -> chk $ getThumbFromUrl sdb albumId
 
 
 checkToken :: AcidState SessionMap -> Integer -> 
@@ -183,15 +186,26 @@ albumData sdb (AlbumId albumid) = do
 
 getArtFromUrl :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
 getArtFromUrl sdb (AlbumId artid) = do
-    url <- look "url"
-    image <- liftIO $ downloadFileWithMime url
-    case image of
-        Left x                  -> notFound $ toResponse "What you are looking for has not been found."
-        Right (Just mime, resp) -> do liftIO $ BS.writeFile (afn artid) resp
-                                      addArt sdb artid mime (afn artid)
-                                      ok $ toResponse "Art added."
-                                      where afn x = ("art/" ++ (show x))
+    qs <- getDataFn $ lookRead "url"
+    al <- getAlbum sdb artid
+    case al of
+        (Just album) -> do 
+                            image <- case qs of
+                                         (Left _)  -> do
+                                                fmr <- liftIO $ getLastFmArtUrl (E.decodeUtf8 $ I.albumArtistName album) (E.decodeUtf8 $ I.albumTitle album)
+                                                case fmr of
+                                                    Nothing  -> return (Left "error")
+                                                    Just url -> liftIO $ downloadFileWithMime url
+                                         (Right u) -> liftIO $ downloadFileWithMime u
+                            case image of
+                                Left _                  -> notFound $ toResponse "What you are looking for has not been found."
+                                Right (Just mime, resp) -> do liftIO $ BS.writeFile (afn artid) resp
+                                                              addArt sdb artid mime (afn artid)
+                                                              ok $ toResponse "Art added."
+                                                              where afn x = ("art/" ++ (show x))
+        _            -> notFound $ toResponse "What you are looking for has not been found."
 
+{-
 getThumbFromUrl :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
 getThumbFromUrl sdb (AlbumId artid) = do
     url <- look "url"
@@ -202,7 +216,7 @@ getThumbFromUrl sdb (AlbumId artid) = do
                                       addThumb sdb artid mime (afn artid)
                                       ok $ toResponse "Thumb added."
                                       where afn x = ("thumb/" ++ (show x))
-
+-}
 serveArt :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
 serveArt sdb (AlbumId artid) = do
     dr <- getArt sdb artid
@@ -210,6 +224,22 @@ serveArt sdb (AlbumId artid) = do
         Just (mime,art) -> serveFileUsing filePathSendAllowRange (asContentType $ B.toString mime) $ art
         Nothing         -> serveFile (asContentType "image/png") "media_album.png"
 
+serveGenThumb :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
+serveGenThumb sdb (AlbumId artid) = do
+    dr <- getThumb sdb artid
+    case dr of
+        Just (tmime,tart) -> serveFileUsing filePathSendAllowRange (asContentType $ B.toString tmime) $ tart
+        Nothing         -> do
+            aa <- getArtData sdb artid
+            case aa of
+                Nothing         -> serveFile (asContentType "image/png") "media_album.png"
+                Just (AlbumArtData amime file _  _) -> do
+                    let tfn = ("thumb/" ++ (show artid))
+                    result <- liftIO $ system $ "convert " ++ file ++ " -resize '200x200!>' " ++ tfn
+                    case result of
+                        ExitSuccess   -> serveFileUsing filePathSendAllowRange (asContentType $ B.toString amime) $ tfn
+                        ExitFailure _ -> serveFile (asContentType "image/png") "media_album.png"
+        
 serveThumb :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
 serveThumb sdb (AlbumId artid) = do
     dr <- getThumb sdb artid

@@ -15,7 +15,7 @@ data Album = Album { name :: T.Text
                    , toptags :: Tags
                    , wiki :: Maybe Wiki
                    } deriving (Show)
-data Image = Image { text :: B.ByteString
+data Image = Image { text :: String
                    , size :: T.Text
                    } deriving (Show)
 data Tags = Tags { tags :: [Tag] } deriving (Show)
