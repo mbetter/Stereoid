@@ -237,7 +237,9 @@ serveGenThumb sdb (AlbumId artid) = do
                     let tfn = ("thumb/" ++ (show artid))
                     result <- liftIO $ system $ "convert " ++ file ++ " -resize '200x200!>' " ++ tfn
                     case result of
-                        ExitSuccess   -> serveFileUsing filePathSendAllowRange (asContentType $ B.toString amime) $ tfn
+                        ExitSuccess   -> do
+                            insertRowAlbumArtDb sdb artid (AlbumArtData amime file (Just amime) (Just tfn))
+                            serveFileUsing filePathSendAllowRange (asContentType $ B.toString amime) $ tfn
                         ExitFailure _ -> serveFile (asContentType "image/png") "media_album.png"
         
 serveThumb :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response

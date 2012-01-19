@@ -1,56 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Jobs where
 
-import qualified Data.Map as Map
-import Data.Time.Clock.POSIX
-import qualified Data.Text as T
-import qualified Data.ByteString.UTF8 as B
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as C
-import Control.Exception
-import Control.Monad.Trans     (MonadIO, liftIO)
-import System.Path
-import System.FilePath
-import System.IO.HVFS
-import System.Directory (doesFileExist)
-import System.IO.Error (isDoesNotExistError)
-import Control.Monad
+import Control.Exception (bracket)
+import Control.Monad (forM_)
+import Control.Monad.Trans (MonadIO, liftIO)
+import System.FilePath (takeExtension)
+import Data.Time.Clock.POSIX (getPOSIXTime)
+
+import FileSystem
 import Persistence
 import Persistence.Types
-import Audio.TagLib.TagLib
-import qualified Codec.Binary.UTF8.String as UTF8
-import qualified Sound.TagLib as TagLib
-import Data.Accessor
-import Data.Maybe
+
 import Data.Acid
-import Data.String (fromString)
 import Data.Acid.Advanced
-import System.Posix.Files
-import qualified Filesystem.Path.CurrentOS as FP
-import System.Directory (doesDirectoryExist, getDirectoryContents)
 
-getRecursiveContents :: FilePath -> IO [FilePath]
+import qualified Data.Text as T (toUpper,pack)
+import qualified Data.ByteString.UTF8 as B (ByteString,fromString)
+import qualified Data.ByteString.Char8 as C (pack)
+import qualified Data.IntMap as IntMap (map)
 
-getRecursiveContents topdir = do
-  names <- getDirectoryContents topdir
-  let properNames = filter (`notElem` [".", ".."]) names
-  paths <- forM properNames $ \name -> do
-    let path = topdir </> name
-    isDirectory <- doesDirectoryExist path
-    if isDirectory
-      then getRecursiveContents path
-      else return [path]
-  return (concat paths)
-                                             {-
-                                             r <- tryJust (guard . isDoesNotExistError) $ getFileStatus x
-                                             case r of
-                                                Left e   -> return ()
-                                                Right fs -> case ((modtime fs) > ((dbmod fcd)-500)) of
-                                                                True    -> examineFile x
-                                                                False   -> putStr "."
-                                                            where modtime f = floor $ realToFrac $ modificationTime f
-                                                                  dbmod f   = max (fcdAddTime f) (fcdUpdateTime f)
-                                            -} 
+import Audio.TagLib.TagLib
+
+clearThumbnails :: AcidState StereoidDb -> IO ()
+clearThumbnails acid = do
+    art <- query acid (QueryAlbumArt)
+    update acid (InsertAlbumArtDb $ AlbumArtDb $ IntMap.map clearthumbnails art)
+    where clearthumbnails (AlbumArtData m a _ _) = AlbumArtData m a Nothing Nothing 
+
 cleanStereoidDb :: AcidState StereoidDb -> IO ()
 cleanStereoidDb sdb = undefined
 

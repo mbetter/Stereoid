@@ -370,6 +370,11 @@ insertArtistMapData key value
          let (ArtistMap artistcache) = sdbArtistMap db
          put (db { sdbArtistMap = ArtistMap (Map.insert key value artistcache) })
 
+insertAlbumArtDb:: AlbumArtDb -> Update StereoidDb ()
+insertAlbumArtDb value
+    = do db <- get
+         put (db { sdbArt = value })
+
 insertSongCache:: SongCache -> Update StereoidDb ()
 insertSongCache value
     = do db <- get
@@ -389,6 +394,7 @@ insertAlbumMapData key value
 $(makeAcidic ''StereoidDb ['insertSongData
                           ,'insertAlbumData
                           ,'insertAlbumArtData
+                          ,'insertAlbumArtDb
                           ,'insertSongCacheData
                           ,'insertSongCache
                           ,'insertAlbumCacheData
