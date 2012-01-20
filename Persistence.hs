@@ -28,6 +28,7 @@ import qualified Data.ByteString.UTF8 as B
 import qualified LastFM.Request as LastFM
 deriving instance Typeable1 (Trie.Trie)
 
+$(deriveSafeCopy 0 'base ''JobData)
 $(deriveSafeCopy 0 'base ''SongData)
 $(deriveSafeCopy 0 'base ''AlbumData)
 $(deriveSafeCopy 0 'base ''ArtistData)
@@ -43,6 +44,7 @@ $(deriveSafeCopy 0 'base ''MetaData)
 $(deriveSafeCopy 0 'base ''ArtAlt)
 $(deriveSafeCopy 0 'base ''ArtAltData)
 -- 
+$(deriveSafeCopy 0 'base ''JobsDb)
 $(deriveSafeCopy 0 'base ''SongDb)
 $(deriveSafeCopy 0 'base ''AlbumDb)
 $(deriveSafeCopy 0 'base ''ArtistDb)
@@ -151,6 +153,7 @@ fileCache StereoidDb {sdbFileCache = FileCache x} = x
 artAltDb StereoidDb {sdbArtAlt = ArtAltDb x} = x
 metaDataDb StereoidDb {sdbMetaData = MetaDataDb x} = x
 stats StereoidDb { sdbStats = x } = x
+jobsDb StereoidDb { sdbJobs = JobsDb x } = x
 
 -- | Used with an unwrap function to apply a function on the internals of a StereoidDb member.
 withDb :: (StereoidDb -> a) -> (a -> b) -> Query StereoidDb b
@@ -163,6 +166,15 @@ getDb f = do db <- ask
              return $ f db
 
 -- | Primary key query function. Tons of these out there.
+queryJobsById :: Int -> Query StereoidDb (Maybe (Int,JobData))
+queryJobsById = (withDb jobsDb) . (flip imQ) 
+
+queryJobsByIds :: [Int] -> Query StereoidDb [(Int,JobData)]
+queryJobsByIds = (withDb jobsDb) . imQs
+
+queryJobs :: Query StereoidDb (IntMap.IntMap JobData)
+queryJobs = getDb jobsDb
+
 queryArtAltByAlbumId :: Int -> Query StereoidDb (Maybe (Int,ArtAltData))
 queryArtAltByAlbumId = (withDb artAltDb) . (flip imQ) 
 
@@ -301,6 +313,12 @@ insertMetaData key value
          let (MetaDataDb songs) = sdbMetaData db
          put (db { sdbMetaData = MetaDataDb (IntMap.insert key value songs) })
 
+insertJobData :: Int -> JobData -> Update StereoidDb ()
+insertJobData key value
+    = do db <- get
+         let (JobsDb jobs) = sdbJobs db
+         put (db { sdbJobs = JobsDb (IntMap.insert key value jobs) })
+
 insertSongData :: Int -> SongData -> Update StereoidDb ()
 insertSongData key value
     = do db <- get
@@ -348,6 +366,11 @@ insertFileCacheData key value
     = do db <- get
          let (FileCache filecache) = sdbFileCache db
          put (db { sdbFileCache = FileCache (Map.insert key value filecache) })
+
+insertJobsDb:: JobsDb -> Update StereoidDb ()
+insertJobsDb value
+    = do db <- get
+         put (db { sdbJobs = value })
 
 insertSongTrie:: SongTrie -> Update StereoidDb ()
 insertSongTrie value
@@ -397,6 +420,8 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'insertAlbumArtDb
                           ,'insertSongCacheData
                           ,'insertSongCache
+                          ,'insertJobData
+                          ,'insertJobsDb
                           ,'insertAlbumCacheData
                           ,'insertAlbumMapData
                           ,'insertAlbumMap
@@ -411,6 +436,9 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'insertFileCacheData
                           ,'queryFileCache
                           ,'queryFiles
+                          ,'queryJobsById
+                          ,'queryJobsByIds
+                          ,'queryJobs
                           ,'querySongBySongId
                           ,'querySongsBySongIds
                           ,'querySongsByAlbumId
@@ -462,6 +490,17 @@ getFreeAlbumId acid = do
     qr <- query' acid (QueryAlbums)
     let keys = IntMap.keys qr
     return $ head $ [1..] \\ keys
+
+getFreeJobId :: (Monad m, MonadIO m) => AcidState StereoidDb -> m Int
+getFreeJobId acid = do
+    qr <- query' acid (QueryJobs)
+    let keys = IntMap.keys qr
+    return $ head $ [1..] \\ keys
+
+getJobData :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe JobData)
+getJobData acid id = do 
+    qr <- query' acid (QueryJobsById id)
+    return $ fmap snd qr
 
 getSong :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe Song)
 getSong acid id = do 

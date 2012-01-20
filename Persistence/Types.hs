@@ -91,8 +91,23 @@ data ArtAlt = FileArt B.ByteString B.ByteString |
 
 data ArtAltData = ArtAltData [ArtAlt] deriving (Show,Eq,Ord,Typeable)
 
-                       
+data JobStatus = JobRunning | JobFinished | JobCancelled | JobError deriving (Show,Eq,Ord,Typeable)
 
+
+data JobData = Add JobStatus Int Int Int |
+               Update JobStatus Int |
+               Gather JobStatus Int |
+               Clean JobStatus Int deriving (Show,Eq,Ord,Typeable)
+
+jobStatus :: JobData -> JobStatus
+jobStatus (Add js _ _ _) = js
+jobStatus (Update js _) = js
+jobStatus (Gather js _) = js
+jobStatus (Clean js _) = js
+
+
+
+data JobsDb = JobsDb !(IntMap.IntMap JobData) deriving (Typeable)
 data SongDb     = SongDb !(IntMap.IntMap     SongData) deriving (Typeable)
 data AlbumDb    = AlbumDb !(IntMap.IntMap    AlbumData) deriving (Typeable)
 data ArtistDb   = ArtistDb !(IntMap.IntMap   ArtistData) deriving (Typeable)
@@ -136,24 +151,26 @@ data StereoidDb = StereoidDb { sdbSongs   ::     SongDb
                              , sdbSongTrie :: SongTrie
                              , sdbArtAlt :: ArtAltDb
                              , sdbMetaData :: MetaDataDb
+                             , sdbJobs :: JobsDb
                              } deriving (Typeable)
 
 
 sdbEmpty :: StereoidDb
-sdbEmpty = StereoidDb { sdbSongs = (SongDb IntMap.empty)
-                      , sdbAlbums = (AlbumDb IntMap.empty)
-                      , sdbArtists = (ArtistDb IntMap.empty)
-                      , sdbArt = (AlbumArtDb IntMap.empty)
-                      , sdbSongCache = (SongCache IntMap.empty)
-                      , sdbAlbumCache = (AlbumCache IntMap.empty)
-                      , sdbArtistCache = (ArtistCache IntMap.empty)
-                      , sdbFileCache = (FileCache Map.empty)
-                      , sdbAlbumMap = (AlbumMap Map.empty)
-                      , sdbArtistMap = (ArtistMap Map.empty)
+sdbEmpty = StereoidDb { sdbSongs = SongDb IntMap.empty
+                      , sdbAlbums = AlbumDb IntMap.empty
+                      , sdbArtists = ArtistDb IntMap.empty
+                      , sdbArt = AlbumArtDb IntMap.empty
+                      , sdbSongCache = SongCache IntMap.empty
+                      , sdbAlbumCache = AlbumCache IntMap.empty
+                      , sdbArtistCache = ArtistCache IntMap.empty
+                      , sdbFileCache = FileCache Map.empty
+                      , sdbAlbumMap = AlbumMap Map.empty
+                      , sdbArtistMap = ArtistMap Map.empty
                       , sdbStats = sdbStatsEmpty
-                      , sdbArtistTrie = (ArtistTrie Trie.empty)
-                      , sdbSongTrie = (SongTrie Trie.empty)
-                      , sdbArtAlt = (ArtAltDb IntMap.empty)
-                      , sdbMetaData = (MetaDataDb IntMap.empty)
+                      , sdbArtistTrie = ArtistTrie Trie.empty
+                      , sdbSongTrie = SongTrie Trie.empty
+                      , sdbArtAlt = ArtAltDb IntMap.empty
+                      , sdbMetaData = MetaDataDb IntMap.empty
+                      , sdbJobs = JobsDb IntMap.empty
                       }
 
