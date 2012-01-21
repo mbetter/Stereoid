@@ -3,6 +3,7 @@ module RouteHandlers where
 import DatabaseFunctions
 import JsonInstances
 import Routing
+import Types
 import DataStructures
 import Persistence
 import Persistence.Types
@@ -163,13 +164,13 @@ albumAddUrl I.Album { I.albumID = id
                                         }
 
 albumSongs :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
-albumSongs sdb (AlbumId id) = do
+albumSongs sdb id = do
     sgs <- getSongsByAlbumId sdb id
     songs <- mapM songAddUrl sgs 
     ok $ toResponse $ showJSON $ sortBy (comparing songTrack) songs 
 
 albumSongsM3U :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
-albumSongsM3U sdb (AlbumId id) = do
+albumSongsM3U sdb id = do
     sgs <- getSongsByAlbumId sdb id
     songs <- mapM songAddUrl sgs 
     case songs of
@@ -177,7 +178,7 @@ albumSongsM3U sdb (AlbumId id) = do
         xs -> ok $ toResponse $ createM3u xs
 
 albumData :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
-albumData sdb (AlbumId albumid) = do
+albumData sdb albumid = do
     album <- getAlbum sdb albumid
     case album of
         Nothing -> notFound $ toResponse "What you are looking for has not been found."
@@ -185,7 +186,7 @@ albumData sdb (AlbumId albumid) = do
                       ok $ toResponse $ showJSON alb
 
 getArtFromUrl :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
-getArtFromUrl sdb (AlbumId artid) = do
+getArtFromUrl sdb artid = do
     qs <- getDataFn $ lookRead "url"
     al <- getAlbum sdb artid
     case al of
@@ -218,14 +219,14 @@ getThumbFromUrl sdb (AlbumId artid) = do
                                       where afn x = ("thumb/" ++ (show x))
 -}
 serveArt :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
-serveArt sdb (AlbumId artid) = do
+serveArt sdb artid = do
     dr <- getArt sdb artid
     case dr of
         Just (mime,art) -> serveFileUsing filePathSendAllowRange (asContentType $ B.toString mime) $ art
         Nothing         -> serveFile (asContentType "image/png") "media_album.png"
 
 serveGenThumb :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
-serveGenThumb sdb (AlbumId artid) = do
+serveGenThumb sdb artid = do
     dr <- getThumb sdb artid
     case dr of
         Just (tmime,tart) -> serveFileUsing filePathSendAllowRange (asContentType $ B.toString tmime) $ tart
@@ -238,33 +239,33 @@ serveGenThumb sdb (AlbumId artid) = do
                     result <- liftIO $ system $ "convert " ++ file ++ " -resize '200x200!>' " ++ tfn
                     case result of
                         ExitSuccess   -> do
-                            insertRowAlbumArtDb sdb artid (AlbumArtData amime file (Just amime) (Just tfn))
+                            insertRowAlbumArtDb sdb (unAlbumId artid) (AlbumArtData amime file (Just amime) (Just tfn))
                             serveFileUsing filePathSendAllowRange (asContentType $ B.toString amime) $ tfn
                         ExitFailure _ -> serveFile (asContentType "image/png") "media_album.png"
         
 serveThumb :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
-serveThumb sdb (AlbumId artid) = do
+serveThumb sdb artid = do
     dr <- getThumb sdb artid
     case dr of
         Just (mime,art) -> serveFileUsing filePathSendAllowRange (asContentType $ B.toString mime) $ art
         Nothing         -> serveFile (asContentType "image/png") "media_album.png"
 
 serveSong :: AcidState StereoidDb -> SongId -> RouteT Sitemap (ServerPartT IO) Response
-serveSong sdb SongId { unSongId = songid } = do
+serveSong sdb songid = do
     song <- getSongFile sdb songid
     case song of
         Nothing -> notFound $ toResponse "What you are looking for has not been found."
         Just sf -> serveFileUsing filePathSendAllowRange (asContentType "audio/mpeg3") $ C.unpack sf
 
 artistData :: AcidState StereoidDb -> ArtistId -> RouteT Sitemap (ServerPartT IO) Response
-artistData sdb (ArtistId id) = do
+artistData sdb id = do
     artist <- getArtist sdb id
     case artist of
         Nothing -> notFound $ toResponse "What you are looking for has not been found."
         Just ar -> ok $ toResponse $ showJSON ar
 
 artistAlbums :: AcidState StereoidDb -> ArtistId -> RouteT Sitemap (ServerPartT IO) Response
-artistAlbums sdb (ArtistId id) = do
+artistAlbums sdb id = do
     albs <- getAlbumsByArtistId sdb id
     albums <- mapM albumAddUrl albs 
     ok $ toResponse $ showJSON albums

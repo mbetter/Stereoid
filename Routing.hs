@@ -12,21 +12,10 @@ import Web.Routes.Happstack    (implSite)
 import Web.Routes.Boomerang    
 import Database.HDBC
 import Auth
+import Types
 import Happstack.Server        (port      , Response     , ServerPartT, ok           , toResponse
                                ,simpleHTTP, nullConf     , seeOther   , dir          , notFound
                                ,seeOther  , asContentType, serveFile  , ToMessage(..)                                                    )
-
-newtype ArtistId 
-    = ArtistId { unArtistId :: Int }
-      deriving (Eq, Ord, Enum, Read, Show, Data, Typeable, PathInfo)
-
-newtype AlbumId 
-    = AlbumId { unAlbumId :: Int }
-      deriving (Eq, Ord, Enum, Read, Show, Data, Typeable, PathInfo)
-
-newtype SongId 
-    = SongId { unSongId :: Int }
-      deriving (Eq, Ord, Enum, Read, Show, Data, Typeable, PathInfo)
 
 data Sitemap
     = Home

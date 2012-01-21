@@ -8,6 +8,7 @@ import Data.List (isPrefixOf, (\\), foldl')
 import Data.Typeable
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
+import Types
 import Data.Acid
 import Data.Acid.Advanced
 import Data.SafeCopy
@@ -28,6 +29,7 @@ import qualified Data.ByteString.UTF8 as B
 import qualified LastFM.Request as LastFM
 deriving instance Typeable1 (Trie.Trie)
 
+$(deriveSafeCopy 0 'base ''JobStatus)
 $(deriveSafeCopy 0 'base ''JobData)
 $(deriveSafeCopy 0 'base ''SongData)
 $(deriveSafeCopy 0 'base ''AlbumData)
@@ -502,8 +504,8 @@ getJobData acid id = do
     qr <- query' acid (QueryJobsById id)
     return $ fmap snd qr
 
-getSong :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe Song)
-getSong acid id = do 
+getSong :: (Monad m, MonadIO m) => AcidState StereoidDb -> SongId -> m (Maybe Song)
+getSong acid (SongId id) = do 
     qr <- query' acid (QuerySongBySongId id)
     case qr of
         Nothing       -> return Nothing
@@ -512,71 +514,71 @@ getSong acid id = do
                             Just (_,artist) <- query' acid (QueryArtistByArtistId artistid)
                             return $ Just $ mkSong song id (aldTitle album) (ardName artist)
 
-getSongFile :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe B.ByteString)
-getSongFile acid id = do 
+getSongFile :: (Monad m, MonadIO m) => AcidState StereoidDb -> SongId -> m (Maybe B.ByteString)
+getSongFile acid (SongId id) = do 
     qr <- query' acid (QuerySongBySongId id)
     return $ fmap (sodFile . snd) qr
 
-getAlbum :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe Album)
-getAlbum acid id = do 
+getAlbum :: (Monad m, MonadIO m) => AcidState StereoidDb -> AlbumId -> m (Maybe Album)
+getAlbum acid (AlbumId id) = do 
     qr <- query' acid (QueryAlbumCacheByAlbumId id)
     return $ fmap ((flip cacheToAlbum $ id) . snd) qr
 
-getArtist :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe DS.Artist)
-getArtist acid id = do 
+getArtist :: (Monad m, MonadIO m) => AcidState StereoidDb -> ArtistId -> m (Maybe DS.Artist)
+getArtist acid (ArtistId id) = do 
     qr <- query' acid (QueryArtistCacheByArtistId id)
     case qr of
         Nothing        -> return Nothing
         Just (_,album) -> return $ Just $ cacheToArtist album id
 
-getArtAlts :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe [ArtAlt])
-getArtAlts acid id = do
+getArtAlts :: (Monad m, MonadIO m) => AcidState StereoidDb -> AlbumId -> m (Maybe [ArtAlt])
+getArtAlts acid (AlbumId id) = do
     qr <- query' acid (QueryArtAltByAlbumId id)
     case qr of
         Nothing         -> return Nothing
         Just (_,(ArtAltData arts))   -> return $ Just arts
 
-getMetaData :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe MetaData)
-getMetaData acid id = do
+getMetaData :: (Monad m, MonadIO m) => AcidState StereoidDb -> AlbumId -> m (Maybe MetaData)
+getMetaData acid (AlbumId id) = do
     qr <- query' acid (QueryMetaDataByAlbumId id)
     case qr of
         Nothing         -> return Nothing
         Just (_,md)     -> return $ Just md
                                 
 -- | Modify album art data in acid store to include thumbnail. If record does not exist, uses thumbnail as art as well.
-addThumb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> B.ByteString -> String -> m ()
-addThumb acid id mime file = do
+addThumb :: (Monad m, MonadIO m) => AcidState StereoidDb -> AlbumId -> B.ByteString -> String -> m ()
+addThumb acid (AlbumId id) mime file = do
     qr <- query' acid (QueryArtByAlbumId id)
     case qr of
         Nothing  -> update' acid (InsertAlbumArtData id (AlbumArtData mime file (Just mime) (Just file) )) 
         Just (_,aad) -> update' acid (InsertAlbumArtData id (aad {aadThumbMime = Just mime, aadThumbFile = Just file}) ) 
                                     
 -- | Modify album art data in acid store. If thumbnail does not currently exist, sets it to Nothing.
-addArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> B.ByteString -> String -> m ()
-addArt acid id mime file = do
+addArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> AlbumId -> B.ByteString -> String -> m ()
+addArt acid (AlbumId id) mime file = do
     qr <- query' acid (QueryArtByAlbumId id)
     case qr of
         Nothing  -> update' acid (InsertAlbumArtData id (AlbumArtData mime file Nothing Nothing) ) 
         Just (_,aad) -> update' acid (InsertAlbumArtData id (aad {aadMime = mime, aadArtFile = file}) ) 
 
-getArtData :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe AlbumArtData)
-getArtData acid id = do 
+getArtData :: (Monad m, MonadIO m) => AcidState StereoidDb -> AlbumId -> m (Maybe AlbumArtData)
+getArtData acid (AlbumId id) = do 
     qr <- query' acid (QueryArtByAlbumId id)
     case qr of
         Nothing        -> return Nothing
         Just (_,artdata) -> return $ Just artdata
 
 -- | Retrieves album art data from acid store, returning Maybe (MIME :: Bytestring, FilePath :: String)
-getArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe (B.ByteString, String))
-getArt acid id = do 
+getArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> AlbumId -> m (Maybe (B.ByteString, String))
+getArt acid (AlbumId id) = do 
     qr <- query' acid (QueryArtByAlbumId id)
     case qr of
         Nothing        -> return Nothing
         Just (_,artdata) -> return $ Just $ (aadMime artdata,aadArtFile artdata)
 
 -- | Retrieves album thumbnail data from acid store, returning Maybe (MIME :: Bytestring, FilePath :: String)
-getThumb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe (B.ByteString, String))
-getThumb acid id = do 
+getThumb :: (Monad m, MonadIO m) => AcidState StereoidDb -> AlbumId -> m (Maybe (B.ByteString, String))
+getThumb acid (AlbumId id) = do 
     qr <- query' acid (QueryArtByAlbumId id)
     case qr of
         Nothing        -> return Nothing
@@ -592,8 +594,8 @@ getFileCache acid = query' acid (QueryFiles)
 getFileCacheData :: (Monad m, MonadIO m) => AcidState StereoidDb -> B.ByteString -> m (Maybe FileCacheData)
 getFileCacheData acid key = query' acid (QueryFileCache key)
 
-getSongsByAlbumId :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m [Song]
-getSongsByAlbumId acid id = do 
+getSongsByAlbumId :: (Monad m, MonadIO m) => AcidState StereoidDb -> AlbumId -> m [Song]
+getSongsByAlbumId acid (AlbumId id) = do 
     qr <- query' acid (QueryAlbumCacheByAlbumId id)
     case qr of
         Nothing         -> return []
@@ -637,8 +639,8 @@ getArtists acid = do
     return $ map f (IntMap.toList artists)
         where f (id, art) = cacheToArtist art id
 
-getAlbumsByArtistId :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m [Album]
-getAlbumsByArtistId acid id = do 
+getAlbumsByArtistId :: (Monad m, MonadIO m) => AcidState StereoidDb -> ArtistId -> m [Album]
+getAlbumsByArtistId acid (ArtistId id) = do 
     qr <- query' acid (QueryArtistCacheByArtistId id)
     case qr of
         Nothing         -> return []
