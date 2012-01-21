@@ -28,6 +28,8 @@ import qualified Data.ByteString.UTF8 as B
 import qualified LastFM.Request as LastFM
 deriving instance Typeable1 (Trie.Trie)
 
+
+$(deriveSafeCopy 0 'base ''JobStatus)
 $(deriveSafeCopy 0 'base ''JobData)
 $(deriveSafeCopy 0 'base ''SongData)
 $(deriveSafeCopy 0 'base ''AlbumData)
