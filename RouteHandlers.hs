@@ -1,6 +1,5 @@
 module RouteHandlers where
 
-import DatabaseFunctions
 import JsonInstances
 import Routing
 import DataStructures
@@ -16,11 +15,11 @@ import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import HTTPClient
-import Database.HDBC
+import Jobs
 import Auth
 import Data.Acid
 import Data.Acid.Advanced
-import Text.JSON
+import Data.Aeson
 import LastFM.Request
 import System.Process
 import System.Exit  ( ExitCode(..) )
@@ -37,6 +36,7 @@ import qualified Happstack.Server.Cookie as Cookie
 import Happstack.Server.Modified (filePathSendAllowRange)
 import Happstack.Server.Internal.Types (Request(..),Method(..))
 import Happstack.Server.Monads (askRq)
+import Control.Concurrent (killThread, forkIO)
 import Web.Routes.Boomerang    
 import Web.Routes              ( PathInfo(..), RouteT    , showURL , runRouteT
                                , Site(..)    , setDefault, mkSitePI           )
@@ -66,14 +66,34 @@ route sdb users sessions url =
                     (AlbumM3U albumId)      -> chk $ albumSongsM3U sdb albumId
                     (AlbumArt albumId)      -> chk $ serveArt sdb albumId
                     (AlbumArtThumb albumId) -> chk $ serveGenThumb sdb albumId
+                    (Jobs)                  -> chk $ jobsAll sdb
+                    (JobInfo jobId)         -> chk $ jobData sdb jobId
              PUT -> case url of
                     (Sessions)              -> chk $ ok (toResponse "Session extended.")
                     (Users)                 -> addUser users
              POST -> case url of
                     (Sessions)              -> authorize users sessions
                     (AlbumArt albumId)      -> chk $ getArtFromUrl sdb albumId
-     --               (AlbumArtThumb albumId) -> chk $ getThumbFromUrl sdb albumId
+                    (Jobs)                  -> chk $ startJob sdb
 
+
+startJob :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
+startJob sdb = do
+    id <- getFreeJobId sdb  
+    liftIO $ forkIO $ addToStereoidDb id "/mnt/emusic" sdb
+    ok $ toResponse "Job started"
+
+jobsAll :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
+jobsAll sdb = do
+    jobs <- getJobs sdb
+    ok $ toResponse $ encode jobs
+
+jobData :: AcidState StereoidDb -> JobId -> RouteT Sitemap (ServerPartT IO) Response
+jobData sdb (JobId id) = do
+    job <- getJob sdb id
+    case job of
+        Nothing -> notFound $ toResponse "What you are looking for has not been found."
+        Just x  -> ok $ toResponse $ encode x
 
 checkToken :: AcidState SessionMap -> Integer -> 
               RouteT Sitemap (ServerPartT IO) Response -> 
@@ -107,9 +127,9 @@ authorize users sessions = do
                 token <- (newSession sessions 60 username) 
                 rq <- getDataFn $ look "rememberme"
                 case rq of
-                    (Left _) -> ok $ toResponse $ showJSON Session { sessionToken = token }
+                    (Left _) -> ok $ toResponse $ encode Session { sessionToken = token }
                     (Right _) -> do lT <- newRememberMe sessions username
-                                    ok $ toResponse $ showJSON Remember { rSessionToken = token, rRememberToken = lT }
+                                    ok $ toResponse $ encode Remember { rSessionToken = token, rRememberToken = lT }
             else
                 forbidden $ toResponse $ "Invalid username/password"
         (Right logintoken) -> do
@@ -118,7 +138,7 @@ authorize users sessions = do
                 Nothing -> forbidden $ toResponse $ "Invalid login token"
                 Just newtoken -> do
                    sess <- newSession sessions 60 username
-                   ok $ toResponse $ showJSON Remember { rSessionToken = sess, rRememberToken = newtoken }
+                   ok $ toResponse $ encode Remember { rSessionToken = sess, rRememberToken = newtoken }
             
 songAddUrl :: I.Song -> RouteT Sitemap (ServerPartT IO) Song
 songAddUrl I.Song { I.songID  = id
@@ -166,7 +186,7 @@ albumSongs :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO)
 albumSongs sdb (AlbumId id) = do
     sgs <- getSongsByAlbumId sdb id
     songs <- mapM songAddUrl sgs 
-    ok $ toResponse $ showJSON $ sortBy (comparing songTrack) songs 
+    ok $ toResponse $ encode $ sortBy (comparing songTrack) songs 
 
 albumSongsM3U :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
 albumSongsM3U sdb (AlbumId id) = do
@@ -182,7 +202,7 @@ albumData sdb (AlbumId albumid) = do
     case album of
         Nothing -> notFound $ toResponse "What you are looking for has not been found."
         Just al -> do alb <- albumAddUrl al
-                      ok $ toResponse $ showJSON alb
+                      ok $ toResponse $ encode alb
 
 getArtFromUrl :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
 getArtFromUrl sdb (AlbumId artid) = do
@@ -261,18 +281,18 @@ artistData sdb (ArtistId id) = do
     artist <- getArtist sdb id
     case artist of
         Nothing -> notFound $ toResponse "What you are looking for has not been found."
-        Just ar -> ok $ toResponse $ showJSON ar
+        Just ar -> ok $ toResponse $ encode ar
 
 artistAlbums :: AcidState StereoidDb -> ArtistId -> RouteT Sitemap (ServerPartT IO) Response
 artistAlbums sdb (ArtistId id) = do
     albs <- getAlbumsByArtistId sdb id
     albums <- mapM albumAddUrl albs 
-    ok $ toResponse $ showJSON albums
+    ok $ toResponse $ encode albums
 
 artistsAll :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
 artistsAll sdb = do
     artists <- getArtists sdb
-    ok $ toResponse $ showJSON artists
+    ok $ toResponse $ encode artists
 
 songsAll :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
 songsAll sdb = do
@@ -283,7 +303,7 @@ songsAll sdb = do
                 (Right r) -> filterSongTrie sdb (E.encodeUtf8 $ T.toUpper $ T.pack r)
     sos <- fSongs
     songs <- mapM songAddUrl sos
-    ok $ toResponse $ showJSON songs
+    ok $ toResponse $ encode songs
 
 albumsAll :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
 albumsAll sdb = do
@@ -301,7 +321,7 @@ albumsAll sdb = do
                 (Right r) -> filterArtistTrie sdb (E.encodeUtf8 $ T.toUpper $ T.pack r)
     albs <- getAlbs
     albums <- mapM albumAddUrl albs
-    ok $ toResponse $ showJSON albums
+    ok $ toResponse $ encode albums
 
 getOffsetLimit :: RouteT Sitemap (ServerPartT IO) (Int,Int)
 getOffsetLimit  = do

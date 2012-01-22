@@ -29,8 +29,8 @@ import qualified LastFM.Request as LastFM
 deriving instance Typeable1 (Trie.Trie)
 
 
-$(deriveSafeCopy 0 'base ''JobStatus)
-$(deriveSafeCopy 0 'base ''JobData)
+$(deriveSafeCopy 0 'base ''DS.JobStatus)
+$(deriveSafeCopy 0 'base ''DS.JobData)
 $(deriveSafeCopy 0 'base ''SongData)
 $(deriveSafeCopy 0 'base ''AlbumData)
 $(deriveSafeCopy 0 'base ''ArtistData)
@@ -168,13 +168,13 @@ getDb f = do db <- ask
              return $ f db
 
 -- | Primary key query function. Tons of these out there.
-queryJobsById :: Int -> Query StereoidDb (Maybe (Int,JobData))
+queryJobsById :: Int -> Query StereoidDb (Maybe (Int,DS.JobData))
 queryJobsById = (withDb jobsDb) . (flip imQ) 
 
-queryJobsByIds :: [Int] -> Query StereoidDb [(Int,JobData)]
+queryJobsByIds :: [Int] -> Query StereoidDb [(Int,DS.JobData)]
 queryJobsByIds = (withDb jobsDb) . imQs
 
-queryJobs :: Query StereoidDb (IntMap.IntMap JobData)
+queryJobs :: Query StereoidDb (IntMap.IntMap DS.JobData)
 queryJobs = getDb jobsDb
 
 queryArtAltByAlbumId :: Int -> Query StereoidDb (Maybe (Int,ArtAltData))
@@ -315,7 +315,7 @@ insertMetaData key value
          let (MetaDataDb songs) = sdbMetaData db
          put (db { sdbMetaData = MetaDataDb (IntMap.insert key value songs) })
 
-insertJobData :: Int -> JobData -> Update StereoidDb ()
+insertJobData :: Int -> DS.JobData -> Update StereoidDb ()
 insertJobData key value
     = do db <- get
          let (JobsDb jobs) = sdbJobs db
@@ -499,10 +499,16 @@ getFreeJobId acid = do
     let keys = IntMap.keys qr
     return $ head $ [1..] \\ keys
 
-getJobData :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe JobData)
-getJobData acid id = do 
+getJob :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe DS.Job)
+getJob acid id = do 
     qr <- query' acid (QueryJobsById id)
-    return $ fmap snd qr
+    return $ fmap ((DS.Job id) . snd) qr
+
+getJobs :: (Monad m, MonadIO m) => AcidState StereoidDb -> m [DS.Job]
+getJobs acid = do
+    jobs <- query' acid (QueryJobs)
+    return $ map f (IntMap.toList jobs)
+        where f (id, job) = DS.Job id job
 
 getSong :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe Song)
 getSong acid id = do 

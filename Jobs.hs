@@ -130,8 +130,8 @@ addSongToStereoidDb sdb t artist album file = do
                                               , fcdUpdateTime = floor now
                                               }
 
-addToStereoidDb :: FilePath -> AcidState StereoidDb -> IO ()
-addToStereoidDb fp sdb = do
+addToStereoidDb :: Int -> FilePath -> AcidState StereoidDb -> IO ()
+addToStereoidDb jobid fp sdb = do
     rd <- getRecursiveContents fp
     forM_ (filter takeMp3 rd) (doTag sdb)
     putStrLn "rebuilding album cache..."
@@ -168,8 +168,10 @@ addToStereoidDb fp sdb = do
                                addSongToStereoidDb s tags art alb (C.pack x)
                                putStrLn "+"
     
+{-
 main :: IO ()
 main = bracket
     (openLocalState (sdbEmpty))
     (closeAcidState)
     (addToStereoidDb "/mnt/emusic")
+-}

@@ -28,6 +28,10 @@ newtype SongId
     = SongId { unSongId :: Int }
       deriving (Eq, Ord, Enum, Read, Show, Data, Typeable, PathInfo)
 
+newtype JobId
+    = JobId { unJobId :: Int }
+      deriving (Eq, Ord, Enum, Read, Show, Data, Typeable, PathInfo)
+
 data Sitemap
     = Home
     | Songs
@@ -40,6 +44,8 @@ data Sitemap
     | AlbumM3U AlbumId
     | AlbumArt AlbumId
     | AlbumArtThumb AlbumId
+    | Jobs
+    | JobInfo JobId
     | Sessions
     | Users
     | Stream SongId
@@ -53,6 +59,7 @@ sitemap =
     <> rStream . (lit "stream" </> songId)
     <> rSessions . (lit "sessions")
     <> rUsers . (lit "users")
+    <> lit "jobs" . job
     <> lit "songs" . song
     <> lit "albums" . album
     <> lit "artists" . artist
@@ -68,6 +75,8 @@ sitemap =
       artist =  rArtists
              <> rArtistInfo    </> artistId
              <> rArtistAlbums  </> artistId </> lit "albums"
+      job  =  rJobs
+             <> rJobInfo     </> jobId
 
 artistId :: Router ArtistId
 artistId =
@@ -76,6 +85,10 @@ artistId =
 albumId :: Router AlbumId
 albumId =
     xmaph AlbumId (Just . unAlbumId) int
+
+jobId :: Router JobId
+jobId =
+    xmaph JobId (Just . unJobId) int
 
 songId :: Router SongId
 songId =

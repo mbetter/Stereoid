@@ -41,9 +41,22 @@ data Artist = Artist { artistID :: Int
                      , artistName :: B.ByteString
                     } deriving (Typeable)
 
-              
+
+data JobStatus = JobRunning | JobFinished | JobCancelled | JobError deriving (Show,Eq,Ord,Typeable)
 
 
+data JobData = Add JobStatus Int |
+               Update JobStatus Int |
+               Gather JobStatus Int |
+               Clean JobStatus Int deriving (Show,Eq,Ord,Typeable)
+
+data Job = Job Int JobData deriving (Typeable)
+
+jobStatus :: JobData -> JobStatus
+jobStatus (Add js _) = js
+jobStatus (Update js _) = js
+jobStatus (Gather js _) = js
+jobStatus (Clean js _) = js
 
 data Session = Session { sessionToken :: SessionToken }
 data Remember = Remember { rRememberToken :: SessionToken
