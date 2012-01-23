@@ -52,11 +52,23 @@ data JobData = Add JobStatus Int |
 
 data Job = Job Int JobData deriving (Typeable)
 
-jobStatus :: JobData -> JobStatus
-jobStatus (Add js _) = js
-jobStatus (Update js _) = js
-jobStatus (Gather js _) = js
-jobStatus (Clean js _) = js
+getStatus :: JobData -> JobStatus
+getStatus (Add js _) = js
+getStatus (Update js _) = js
+getStatus (Gather js _) = js
+getStatus (Clean js _) = js
+
+setStatus :: JobData -> JobStatus -> JobData
+setStatus (Add _ c) s = (Add s c)
+setStatus (Update _ c) s = (Update s c)
+setStatus (Gather _ c) s = (Gather s c)
+setStatus (Clean _ c) s = (Clean s c)
+
+changeCount :: JobData -> Int -> JobData
+changeCount (Add s c) i = (Add s (c + i))
+changeCount (Update s c) i = (Update s (c + i))
+changeCount (Gather s c) i = (Gather s (c + i))
+changeCount (Clean s c) i = (Clean s (c + i))
 
 data Session = Session { sessionToken :: SessionToken }
 data Remember = Remember { rRememberToken :: SessionToken

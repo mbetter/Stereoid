@@ -688,6 +688,22 @@ insertRowAlbumMap acid md id = update' acid (InsertAlbumMapData md id)
 insertRowArtistMap :: (Monad m, MonadIO m) => AcidState StereoidDb -> ArtistMapData -> Int -> m ()
 insertRowArtistMap acid md id = update' acid (InsertArtistMapData md id)
 
+insertRowJobsDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> DS.JobData -> m ()
+insertRowJobsDb acid id ad = update' acid (InsertJobData id ad)
+
+updateJobStatus :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> DS.JobStatus -> m ()
+updateJobStatus acid id st = do
+    qr <- query' acid (QueryJobsById id)
+    case qr of
+        Nothing      -> return ()
+        Just (_,job) -> update' acid (InsertJobData id (DS.setStatus job st)) 
+
+updateJobCount :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> Int -> m ()
+updateJobCount acid id st = do
+    qr <- query' acid (QueryJobsById id)
+    case qr of
+        Nothing      -> return ()
+        Just (_,job) -> update' acid (InsertJobData id (DS.changeCount job st)) 
 {-
 updateAlbumInfoFromLastFm :: AcidState StereoidDb -> Int -> IO ()
 updateAlbumInfoFromLastFm acid id = do

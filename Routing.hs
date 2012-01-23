@@ -28,15 +28,26 @@ newtype SongId
     = SongId { unSongId :: Int }
       deriving (Eq, Ord, Enum, Read, Show, Data, Typeable, PathInfo)
 
+newtype UserId
+    = UserId { unUserId :: String }
+      deriving (Eq, Ord, Read, Show, Data, Typeable, PathInfo)
+
 newtype JobId
     = JobId { unJobId :: Int }
       deriving (Eq, Ord, Enum, Read, Show, Data, Typeable, PathInfo)
+
+newtype CatalogId
+    = CatalogId { unCatalogId :: Int }
+      deriving (Eq, Ord, Enum, Read, Show, Data, Typeable, PathInfo)
+
 
 data Sitemap
     = Home
     | Songs
     | Albums
     | Artists
+    | Catalogs
+    | CatalogInfo CatalogId
     | ArtistInfo ArtistId
     | ArtistAlbums ArtistId
     | AlbumInfo AlbumId
@@ -63,6 +74,7 @@ sitemap =
     <> lit "songs" . song
     <> lit "albums" . album
     <> lit "artists" . artist
+    <> lit "catalogs" . catalog
     )
     where
       song   =  rSongs
@@ -75,6 +87,8 @@ sitemap =
       artist =  rArtists
              <> rArtistInfo    </> artistId
              <> rArtistAlbums  </> artistId </> lit "albums"
+      catalog  =  rCatalogs
+             <> rCatalogInfo     </> catalogId
       job  =  rJobs
              <> rJobInfo     </> jobId
 
@@ -93,6 +107,14 @@ jobId =
 songId :: Router SongId
 songId =
     xmaph SongId (Just . unSongId) int
+
+catalogId :: Router CatalogId
+catalogId =
+    xmaph CatalogId (Just . unCatalogId) int
+
+userId :: Router UserId
+userId =
+    xmaph UserId (Just . unUserId) anyString
 
 
 

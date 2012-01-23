@@ -1,11 +1,5 @@
 module RouteHandlers where
 
-import JsonInstances
-import Routing
-import DataStructures
-import Persistence
-import Persistence.Types
-import qualified DataStructuresInternal as I
 import Data.Ord (comparing)
 import Data.List (sortBy)
 import Control.Monad (msum, liftM)
@@ -14,9 +8,6 @@ import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
-import HTTPClient
-import Jobs
-import Auth
 import Data.Acid
 import Data.Acid.Advanced
 import Data.Aeson
@@ -40,6 +31,15 @@ import Control.Concurrent (killThread, forkIO)
 import Web.Routes.Boomerang    
 import Web.Routes              ( PathInfo(..), RouteT    , showURL , runRouteT
                                , Site(..)    , setDefault, mkSitePI           )
+import Jobs
+import Auth
+import Routing
+import HTTPClient
+import Persistence
+import JsonInstances
+import DataStructures
+import Persistence.Types
+import qualified DataStructuresInternal as I
 
 decodePolicy :: BodyPolicy
 decodePolicy = (defaultBodyPolicy "/tmp/" 0 1000 1000)
@@ -52,8 +52,8 @@ route sdb users sessions url =
      do decodeBody decodePolicy
         rq <- askRq
         let chk = checkToken sessions 15
-        let meth = rqMethod rq
-        case meth of
+--        let meth = rqMethod rq
+        case rqMethod rq of
              GET -> case url of
                     (Stream songId)         -> serveSong sdb songId
                     (AlbumInfo albumId)     -> chk $ albumData sdb albumId
@@ -68,14 +68,25 @@ route sdb users sessions url =
                     (AlbumArtThumb albumId) -> chk $ serveGenThumb sdb albumId
                     (Jobs)                  -> chk $ jobsAll sdb
                     (JobInfo jobId)         -> chk $ jobData sdb jobId
+                    (Catalogs)              -> chk $ catalogsAll sdb
+                    (CatalogInfo catalogId) -> chk $ catalogData sdb catalogId
              PUT -> case url of
                     (Sessions)              -> chk $ ok (toResponse "Session extended.")
-                    (Users)                 -> addUser users
+                    (CatalogInfo catalogId) -> chk $ startJob sdb
              POST -> case url of
                     (Sessions)              -> authorize users sessions
                     (AlbumArt albumId)      -> chk $ getArtFromUrl sdb albumId
-                    (Jobs)                  -> chk $ startJob sdb
+                    (Users)                 -> chk $ addUser users
+                    (Catalogs)              -> chk $ catalogNew sdb
 
+catalogNew :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
+catalogNew sdb = undefined
+
+catalogsAll :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
+catalogsAll sdb = undefined
+
+catalogData :: AcidState StereoidDb -> CatalogId -> RouteT Sitemap (ServerPartT IO) Response
+catalogData sdb (CatalogId id) = undefined
 
 startJob :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
 startJob sdb = do

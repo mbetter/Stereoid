@@ -13,6 +13,7 @@ import Persistence.Types
 
 import Data.Acid
 import Data.Acid.Advanced
+import DataStructures
 
 import qualified Data.Text as T (toUpper,pack)
 import qualified Data.ByteString.UTF8 as B (ByteString,fromString)
@@ -132,8 +133,9 @@ addSongToStereoidDb sdb t artist album file = do
 
 addToStereoidDb :: Int -> FilePath -> AcidState StereoidDb -> IO ()
 addToStereoidDb jobid fp sdb = do
+    insertRowJobsDb sdb jobid (Add JobRunning 0) 
     rd <- getRecursiveContents fp
-    forM_ (filter takeMp3 rd) (doTag sdb)
+    forM_ (filter takeMp3 rd) (doTag sdb jobid)
     putStrLn "rebuilding album cache..."
     buildAlbumCache sdb
     putStrLn "rebuilding artist cache..."
@@ -151,14 +153,14 @@ addToStereoidDb jobid fp sdb = do
     putStrLn "Building stats..."
     buildStats sdb
     putStrLn "Done!"
-
+    updateJobStatus sdb jobid JobFinished
     where takeMp3 x = (takeExtension x) == ".mp3"
-          doTag s x = do
+          doTag s j x = do
                 fc <- getFileCacheData s (C.pack x) 
                 case fc of
                     (Just fcd) -> return ()
-                    Nothing    -> examineFile x
-                 where examineFile x = do
+                    Nothing    -> examineFile x j
+                 where examineFile x j = do
                        tf <- getTagFileInfo x
                        case tf of
                             Nothing -> return ()
@@ -166,8 +168,10 @@ addToStereoidDb jobid fp sdb = do
                                art <- checkAddArtistMap s tags
                                alb <- checkAddAlbumMap  s tags 
                                addSongToStereoidDb s tags art alb (C.pack x)
+                               updateJobCount s j 1
                                putStrLn "+"
     
+
 {-
 main :: IO ()
 main = bracket
