@@ -21,7 +21,3 @@ data Album =  Album { albumID :: Int
                     , albumArtistName :: B.ByteString
                     , albumYear :: Int
                     } deriving (Typeable)
-
-data Artist = Artist { artistID :: Int
-                     , artistName :: B.ByteString
-                    } deriving (Typeable)

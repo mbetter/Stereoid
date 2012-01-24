@@ -18,7 +18,7 @@ import Control.Monad.Reader
 import Control.Applicative     ( (<$>) )
 import Data.SafeCopy
 import Safe
-import DataStructures
+import Types
 import Data.Typeable
 import System.Random
 import Control.Monad.Trans     (MonadIO, liftIO)

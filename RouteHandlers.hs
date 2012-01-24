@@ -9,7 +9,6 @@ import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import Data.Acid
-import Data.Acid.Advanced
 import Data.Aeson
 import LastFM.Request
 import System.Process
@@ -27,7 +26,7 @@ import qualified Happstack.Server.Cookie as Cookie
 import Happstack.Server.Modified (filePathSendAllowRange)
 import Happstack.Server.Internal.Types (Request(..),Method(..))
 import Happstack.Server.Monads (askRq)
-import Control.Concurrent (killThread, forkIO)
+import Control.Concurrent (forkIO)
 import Web.Routes.Boomerang    
 import Web.Routes              ( PathInfo(..), RouteT    , showURL , runRouteT
                                , Site(..)    , setDefault, mkSitePI           )
@@ -37,8 +36,7 @@ import Routing
 import HTTPClient
 import Persistence
 import JsonInstances
-import DataStructures
-import Persistence.Types
+import Types
 import qualified DataStructuresInternal as I
 
 decodePolicy :: BodyPolicy

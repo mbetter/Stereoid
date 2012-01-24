@@ -9,16 +9,16 @@ import Data.Time.Clock.POSIX (getPOSIXTime)
 
 import FileSystem
 import Persistence
-import Persistence.Types
 
 import Data.Acid
 import Data.Acid.Advanced
-import DataStructures
+import Types
 
 import qualified Data.Text as T (toUpper,pack)
 import qualified Data.ByteString.UTF8 as B (ByteString,fromString)
 import qualified Data.ByteString.Char8 as C (pack)
 import qualified Data.IntMap as IntMap (map)
+import qualified Data.Text.Encoding as E
 
 import Audio.TagLib.TagLib
 
@@ -85,30 +85,31 @@ addToArtistMap sdb tags = do
     return artid
     where amd t = ArtistMapData { armdName = T.toUpper $ T.pack $ tfiArtist t }
 
-checkAddAlbumMap :: (Monad m, MonadIO m) => AcidState StereoidDb -> TagFileInfo -> m Int
+checkAddAlbumMap :: (Monad m, MonadIO m) => AcidState StereoidDb -> TagFileInfo -> m (Int,Maybe AlbumMapData)
 checkAddAlbumMap sdb tags = do
-    qr <- getAlbumMapId sdb (amd tags)    
+    let aad = amd tags
+    qr <- getAlbumMapId sdb aad    
     case qr of
-        Just id -> return id
+        Just id -> return (id,Nothing)
         Nothing -> do new <- addToAlbumMap sdb tags
                       liftIO $ putStrLn $ "added album #" ++ (show new)
-                      return new
+                      return (new, Just aad)
     where amd t = AlbumMapData { almdTitle = T.toUpper $ T.pack (tfiAlbum t)
                                , almdArtistName = T.toUpper $ T.pack (tfiArtist t)
                                , almdYear = tfiYear tags
                                }
 
-checkAddArtistMap :: (Monad m, MonadIO m) => AcidState StereoidDb -> TagFileInfo -> m Int
+checkAddArtistMap :: (Monad m, MonadIO m) => AcidState StereoidDb -> TagFileInfo -> m (Int,Maybe String)
 checkAddArtistMap sdb tags = do
     qr <- getArtistMapId sdb (amd tags)    
     case qr of
-        Just id -> return id
+        Just id -> return (id,Nothing)
         Nothing -> do new <- addToArtistMap sdb tags
                       liftIO $ putStrLn $ "added artist #" ++ (show new)
-                      return new
+                      return (new,Just $ tfiArtist tags)
     where amd t = ArtistMapData { armdName = T.toUpper $ T.pack $ tfiArtist t }
 
-addSongToStereoidDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> TagFileInfo -> Int -> Int -> B.ByteString -> m ()
+addSongToStereoidDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> TagFileInfo -> Int -> Int -> B.ByteString -> m Int
 addSongToStereoidDb sdb t artist album file = do
     qr <- getFreeSongId sdb
     now <- liftIO $ getPOSIXTime
@@ -130,7 +131,26 @@ addSongToStereoidDb sdb t artist album file = do
                                               , fcdAddTime = floor now
                                               , fcdUpdateTime = floor now
                                               }
+    return qr
 
+processArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> Maybe String -> m ()
+processArt _ _ (Nothing) = return ()
+processArt sdb id (Just art) = do
+    insertRowArtistDb sdb id (ArtistData (name art) (sortname art))
+    insertRowArtistCache sdb id (ArtistCacheData (name art) (sortname art) [] )     
+    insertKeyArtistTrie sdb (f art)
+    where name = B.fromString
+          sortname = B.fromString . fst . (splitPrefix prefixList)
+          f = E.encodeUtf8 . (stripPrefix prefixList') . T.toUpper . T.pack
+
+processAlb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> Maybe AlbumMapData -> Int -> Maybe String -> m ()
+processAlbum _ _ Nothing _ _ = return ()
+processAlbum sdb id (Just alb) artid ad = do
+    let artdata = case ad of
+        (Just x)    -> x
+        Nothing     -> do
+            
+        
 addToStereoidDb :: Int -> FilePath -> AcidState StereoidDb -> IO ()
 addToStereoidDb jobid fp sdb = do
     insertRowJobsDb sdb jobid (Add JobRunning 0) 
@@ -165,13 +185,14 @@ addToStereoidDb jobid fp sdb = do
                        case tf of
                             Nothing -> return ()
                             Just tags -> do
-                               art <- checkAddArtistMap s tags
-                               alb <- checkAddAlbumMap  s tags 
-                               addSongToStereoidDb s tags art alb (C.pack x)
+                               (art,artres) <- checkAddArtistMap s tags
+                               processArt s art artres
+                               (alb,albres) <- checkAddAlbumMap  s tags 
+                               processAlb s alb albres art artres
+                               sid          <- addSongToStereoidDb s tags art alb (C.pack x)
                                updateJobCount s j 1
                                putStrLn "+"
     
-
 {-
 main :: IO ()
 main = bracket
