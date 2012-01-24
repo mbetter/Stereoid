@@ -9,7 +9,6 @@ import qualified Data.Text as T
 import qualified DataStructures as DS
 import qualified Data.Trie as Trie
 import Data.Typeable
-import DataStructuresInternal
 
 data SongData  =  SongData  { sodName     :: B.ByteString
                             , sodTrack    :: Int
