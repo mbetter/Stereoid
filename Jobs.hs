@@ -113,25 +113,27 @@ addSongToStereoidDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> TagFileIn
 addSongToStereoidDb sdb t artist album file = do
     qr <- getFreeSongId sdb
     now <- liftIO $ getPOSIXTime
-    insertRowSongDb sdb qr SongData { sodName = B.fromString $ tfiTitle t
-                                    , sodTrack = tfiTrack t
-                                    , sodYear = tfiYear t
+    insertRowSongDb sdb qr SongData { sodName = stitle t
+                                    , sodTrack = strack t
+                                    , sodYear = syear t
                                     , sodFile = file
                                     , sodAlbumId = album
                                     , sodArtistId = artist
-                                    , sodDuration = tfiDuration t
+                                    , sodDuration = sdur t
                                     }
-    insertRowAlbumDb sdb album AlbumData { aldTitle = B.fromString $ tfiAlbum t
-                                         , aldSortTitle = B.fromString $ fst $ splitPrefix prefixList $ tfiAlbum t
-                                         }
-    insertRowArtistDb sdb artist ArtistData { ardName = B.fromString $ tfiArtist t
-                                            , ardSortName = B.fromString $ fst $ splitPrefix prefixList $ tfiArtist t
-                                            }
+    (Just (AlbumCacheData a b c d e f g)) <- getAlbumCache sdb album
+    insertRowAlbumCache sdb album (AlbumCacheData a b c d e f (qr:g))
     insertRowFileCache sdb file FileCacheData { fcdSongId = qr
                                               , fcdAddTime = floor now
                                               , fcdUpdateTime = floor now
                                               }
+    insertRowSongCache sdb qr (SongCacheData (stitle t) (strack t) (syear t) file album a artist d (sdur t))
+    addToSongTrie sdb (B.fromString $ tfiTitle t) qr 
     return qr
+    where stitle = B.fromString . tfiTitle
+          strack = tfiTrack
+          syear = tfiYear
+          sdur = tfiDuration
 
 processArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> Maybe String -> m ()
 processArt _ _ (Nothing) = return ()
@@ -144,18 +146,21 @@ processArt sdb id (Just art) = do
           f = E.encodeUtf8 . (stripPrefix prefixList') . T.toUpper . T.pack
 
 processAlb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> Maybe AlbumMapData -> Int -> Maybe String -> m ()
-processAlbum _ _ Nothing _ _ = return ()
-processAlbum sdb id (Just alb) artid ad = do
-    let artdata = case ad of
-        (Just x)    -> x
-        Nothing     -> do
-            
+processAlb _ _ Nothing _ _ = return ()
+processAlb sdb id (Just (AlbumMapData albtit _ albyr)) artid _ = do
+    (Just (ArtistCacheData adn ads adids)) <- getArtistCache sdb artid            
+    insertRowArtistCache sdb artid (ArtistCacheData adn ads (id:adids)) 
+    insertRowAlbumCache sdb id (AlbumCacheData (f albtit) (g albtit) artid adn ads albyr [])
+    insertRowAlbumDb sdb id (AlbumData (f albtit) (g albtit)) 
+    where f = E.encodeUtf8
+          g = f . (stripPrefix prefixList')
         
 addToStereoidDb :: Int -> FilePath -> AcidState StereoidDb -> IO ()
 addToStereoidDb jobid fp sdb = do
     insertRowJobsDb sdb jobid (Add JobRunning 0) 
     rd <- getRecursiveContents fp
     forM_ (filter takeMp3 rd) (doTag sdb jobid)
+    {-
     putStrLn "rebuilding album cache..."
     buildAlbumCache sdb
     putStrLn "rebuilding artist cache..."
@@ -170,6 +175,7 @@ addToStereoidDb jobid fp sdb = do
     buildSongCache sdb
     putStrLn "Building song trie ..."
     buildSongTrie sdb
+    -}
     putStrLn "Building stats..."
     buildStats sdb
     putStrLn "Done!"
