@@ -282,6 +282,9 @@ queryAlbums = getDb albumDb
 queryArtistMap:: ArtistMapData -> Query StereoidDb (Maybe Int)
 queryArtistMap = (withDb artistMap) . Map.lookup
 
+queryElemArtistTrie:: B.ByteString -> Query StereoidDb (Maybe [Int])
+queryElemArtistTrie = (withDb artistTrie) . Trie.lookup
+
 queryElemSongTrie:: B.ByteString -> Query StereoidDb (Maybe [Int])
 queryElemSongTrie = (withDb songTrie) . Trie.lookup
 
@@ -392,6 +395,12 @@ insertKeySongTrie key value
          let (SongTrie songtrie) = sdbSongTrie db
          put (db { sdbSongTrie = SongTrie (Trie.insert key value songtrie)})
 
+updateKeyArtistTrie :: B.ByteString -> [Int] -> Update StereoidDb ()
+updateKeyArtistTrie key value
+    = do db <- get
+         let (ArtistTrie artisttrie) = sdbArtistTrie db
+         put (db { sdbArtistTrie = ArtistTrie (Trie.insert key value artisttrie)})
+
 newKeyArtistTrie :: B.ByteString -> Update StereoidDb ()
 newKeyArtistTrie key
     = do db <- get
@@ -451,6 +460,7 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'insertArtistData
                           ,'insertKeySongTrie
                           ,'newKeyArtistTrie
+                          ,'updateKeyArtistTrie
                           ,'insertArtistCacheData
                           ,'insertArtistMapData
                           ,'insertArtistMap
@@ -483,6 +493,7 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'queryArtistMap
                           ,'queryArtistTrie
                           ,'queryElemSongTrie
+                          ,'queryElemArtistTrie
                           ,'querySongTrie
                           ,'querySongCache
                           ,'queryAlbumCache
@@ -728,6 +739,14 @@ insertKeyArtistTrie acid ad = update' acid (NewKeyArtistTrie ad)
 
 insertRowJobsDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> JobData -> m ()
 insertRowJobsDb acid id ad = update' acid (InsertJobData id ad)
+
+addToArtistTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> B.ByteString -> Int -> m ()
+addToArtistTrie acid key val = do
+    qr <- query' acid (QueryElemArtistTrie key)
+    let ids = case qr of
+                  Nothing -> [val]
+                  Just x  -> val:x
+    update' acid (UpdateKeyArtistTrie key ids)
 
 addToSongTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> B.ByteString -> Int -> m ()
 addToSongTrie acid key val = do

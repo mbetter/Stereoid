@@ -128,12 +128,13 @@ addSongToStereoidDb sdb t artist album file = do
                                               , fcdUpdateTime = floor now
                                               }
     insertRowSongCache sdb qr (SongCacheData (stitle t) (strack t) (syear t) file album a artist d (sdur t))
-    addToSongTrie sdb (B.fromString $ tfiTitle t) qr 
+    addToSongTrie sdb (r t) qr 
     return qr
     where stitle = B.fromString . tfiTitle
           strack = tfiTrack
           syear = tfiYear
           sdur = tfiDuration
+          r = E.encodeUtf8 . (stripPrefix prefixList') . T.toUpper . T.pack . tfiTitle
 
 processArt :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> Maybe String -> m ()
 processArt _ _ (Nothing) = return ()
@@ -151,31 +152,17 @@ processAlb sdb id (Just (AlbumMapData albtit _ albyr)) artid _ = do
     (Just (ArtistCacheData adn ads adids)) <- getArtistCache sdb artid            
     insertRowArtistCache sdb artid (ArtistCacheData adn ads (id:adids)) 
     insertRowAlbumCache sdb id (AlbumCacheData (f albtit) (g albtit) artid adn ads albyr [])
+    addToArtistTrie sdb (h adn) id
     insertRowAlbumDb sdb id (AlbumData (f albtit) (g albtit)) 
     where f = E.encodeUtf8
           g = f . (stripPrefix prefixList')
-        
+          h = E.encodeUtf8 . (stripPrefix prefixList') . T.toUpper . E.decodeUtf8
+
 addToStereoidDb :: Int -> FilePath -> AcidState StereoidDb -> IO ()
 addToStereoidDb jobid fp sdb = do
     insertRowJobsDb sdb jobid (Add JobRunning 0) 
     rd <- getRecursiveContents fp
     forM_ (filter takeMp3 rd) (doTag sdb jobid)
-    {-
-    putStrLn "rebuilding album cache..."
-    buildAlbumCache sdb
-    putStrLn "rebuilding artist cache..."
-    buildArtistCache sdb
-    putStrLn "Building album map..."
-    buildAlbumMap sdb
-    putStrLn "Building artist map..."
-    buildArtistMap sdb
-    putStrLn "Building artist trie..."
-    buildArtistTrie sdb
-    putStrLn "Building song cache ..."
-    buildSongCache sdb
-    putStrLn "Building song trie ..."
-    buildSongTrie sdb
-    -}
     putStrLn "Building stats..."
     buildStats sdb
     putStrLn "Done!"

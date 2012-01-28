@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies, DeriveDataTypeable, TemplateHaskell #-}
 module Types where
 
-import Text.JSON
+-- import Text.JSON
 import Happstack.Server        (ToMessage(..))
 import Data.Typeable
 import qualified Data.ByteString.Char8 as C
@@ -11,7 +11,7 @@ import qualified Data.Map as Map
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import qualified Data.Trie as Trie
-
+import Data.Aeson
 
 
 type SessionToken = String
@@ -85,9 +85,9 @@ instance ToMessage M3UPlaylist where
     toContentType _ = C.pack "audio/x-mpegurl"
     toMessage (M3UPlaylist val) = LU.fromString val
 
-instance ToMessage JSValue where
+instance ToMessage Value where
     toContentType _ = C.pack "application/json"
-    toMessage val = LU.fromString $ encode val
+    toMessage val = encode val
 
 newtype M3UPlaylist = M3UPlaylist { unM3UPlaylist :: String }
 

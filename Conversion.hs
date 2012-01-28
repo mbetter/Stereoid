@@ -2,8 +2,7 @@
 module Conversion where
 
 import Persistence
-import Persistence.Types
-import DataStructures
+import Types
 import Database.HDBC
 import Database.HDBC.MySQL
 import qualified Data.ByteString as BS
