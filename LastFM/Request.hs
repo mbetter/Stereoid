@@ -11,7 +11,7 @@ import Data.Aeson
 import LastFM.JSON
 import LastFM.Types
 import LastFM.ApiKey
-import qualified Persistence.Types as P
+import qualified Types as P
 import qualified Data.Text as T
 
 downloadURL :: String -> IO (Either String BL.ByteString)

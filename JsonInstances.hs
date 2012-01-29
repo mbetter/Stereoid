@@ -2,7 +2,7 @@
 module JsonInstances where
 
 import Data.Aeson
-import DataStructures
+import Types
 
 instance ToJSON Session where
    toJSON (Session s) = object ["sessionToken" .= s]

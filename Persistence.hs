@@ -3,7 +3,6 @@
 
 module Persistence where
 
-import Persistence.Types
 import Data.List (isPrefixOf, (\\), foldl')
 import Data.Typeable
 import qualified Data.Text as T
@@ -16,7 +15,7 @@ import qualified Data.Trie.Convenience as TC
 import System.Random.Shuffle (shuffle')
 import System.Random (mkStdGen)
 import Data.Maybe (mapMaybe)
-import qualified DataStructures as DS
+import Types hiding (Song(..),Album(..)) 
 import DataStructuresInternal
 import Control.Monad
 import Control.Monad.State
@@ -29,8 +28,8 @@ import qualified LastFM.Request as LastFM
 deriving instance Typeable1 (Trie.Trie)
 
 
-$(deriveSafeCopy 0 'base ''DS.JobStatus)
-$(deriveSafeCopy 0 'base ''DS.JobData)
+$(deriveSafeCopy 0 'base ''JobStatus)
+$(deriveSafeCopy 0 'base ''JobData)
 $(deriveSafeCopy 0 'base ''SongData)
 $(deriveSafeCopy 0 'base ''AlbumData)
 $(deriveSafeCopy 0 'base ''ArtistData)
@@ -80,10 +79,10 @@ cacheToAlbum AlbumCacheData { alcdTitle = title
 cacheToSong :: SongCacheData -> Int -> Song
 cacheToSong (SongCacheData n t _ _ albid albt _ art dur) id = Song id n t albid albt art dur
 
-cacheToArtist :: ArtistCacheData -> Int -> DS.Artist
-cacheToArtist ArtistCacheData { arcdName = name } id = DS.Artist { DS.artistID = id
-                                                                 , DS.artistName = name
-                                                                 }
+cacheToArtist :: ArtistCacheData -> Int -> Artist
+cacheToArtist ArtistCacheData { arcdName = name } id = Artist { artistID = id
+                                                              , artistName = name
+                                                              }
 
 -- | Flips an IntMap to a Map, used for generating indexes for reverse lookups
 flipIntMap :: Eq a => IntMap.IntMap a -> Map.Map a Int
@@ -102,7 +101,12 @@ prefixList' :: [T.Text]
 prefixList' = [ "THE "
              , "AN "
              , "A "
-             ]
+             , "The "
+             , "the "
+             , "An "
+             , "an "
+             , "a "
+             ] -- I'm going to go take a shower now.
 
 stripPrefix :: [T.Text] -> T.Text -> T.Text
 stripPrefix (p:ps) str
@@ -168,13 +172,13 @@ getDb f = do db <- ask
              return $ f db
 
 -- | Primary key query function. Tons of these out there.
-queryJobsById :: Int -> Query StereoidDb (Maybe (Int,DS.JobData))
+queryJobsById :: Int -> Query StereoidDb (Maybe (Int,JobData))
 queryJobsById = (withDb jobsDb) . (flip imQ) 
 
-queryJobsByIds :: [Int] -> Query StereoidDb [(Int,DS.JobData)]
+queryJobsByIds :: [Int] -> Query StereoidDb [(Int,JobData)]
 queryJobsByIds = (withDb jobsDb) . imQs
 
-queryJobs :: Query StereoidDb (IntMap.IntMap DS.JobData)
+queryJobs :: Query StereoidDb (IntMap.IntMap JobData)
 queryJobs = getDb jobsDb
 
 queryArtAltByAlbumId :: Int -> Query StereoidDb (Maybe (Int,ArtAltData))
@@ -278,6 +282,12 @@ queryAlbums = getDb albumDb
 queryArtistMap:: ArtistMapData -> Query StereoidDb (Maybe Int)
 queryArtistMap = (withDb artistMap) . Map.lookup
 
+queryElemArtistTrie:: B.ByteString -> Query StereoidDb (Maybe [Int])
+queryElemArtistTrie = (withDb artistTrie) . Trie.lookup
+
+queryElemSongTrie:: B.ByteString -> Query StereoidDb (Maybe [Int])
+queryElemSongTrie = (withDb songTrie) . Trie.lookup
+
 querySongTrie:: B.ByteString -> Query StereoidDb (Trie.Trie [Int])
 querySongTrie = (withDb songTrie) . Trie.submap
 
@@ -315,7 +325,7 @@ insertMetaData key value
          let (MetaDataDb songs) = sdbMetaData db
          put (db { sdbMetaData = MetaDataDb (IntMap.insert key value songs) })
 
-insertJobData :: Int -> DS.JobData -> Update StereoidDb ()
+insertJobData :: Int -> JobData -> Update StereoidDb ()
 insertJobData key value
     = do db <- get
          let (JobsDb jobs) = sdbJobs db
@@ -369,15 +379,33 @@ insertFileCacheData key value
          let (FileCache filecache) = sdbFileCache db
          put (db { sdbFileCache = FileCache (Map.insert key value filecache) })
 
-insertJobsDb:: JobsDb -> Update StereoidDb ()
+insertJobsDb :: JobsDb -> Update StereoidDb ()
 insertJobsDb value
     = do db <- get
          put (db { sdbJobs = value })
 
-insertSongTrie:: SongTrie -> Update StereoidDb ()
+insertSongTrie :: SongTrie -> Update StereoidDb ()
 insertSongTrie value
     = do db <- get
          put (db { sdbSongTrie = value })
+
+insertKeySongTrie :: B.ByteString -> [Int] -> Update StereoidDb ()
+insertKeySongTrie key value
+    = do db <- get
+         let (SongTrie songtrie) = sdbSongTrie db
+         put (db { sdbSongTrie = SongTrie (Trie.insert key value songtrie)})
+
+updateKeyArtistTrie :: B.ByteString -> [Int] -> Update StereoidDb ()
+updateKeyArtistTrie key value
+    = do db <- get
+         let (ArtistTrie artisttrie) = sdbArtistTrie db
+         put (db { sdbArtistTrie = ArtistTrie (Trie.insert key value artisttrie)})
+
+newKeyArtistTrie :: B.ByteString -> Update StereoidDb ()
+newKeyArtistTrie key
+    = do db <- get
+         let (ArtistTrie artisttrie) = sdbArtistTrie db
+         put (db { sdbArtistTrie = ArtistTrie (Trie.insert key [] artisttrie)})
 
 insertArtistTrie:: ArtistTrie -> Update StereoidDb ()
 insertArtistTrie value
@@ -430,6 +458,9 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'insertArtAltData
                           ,'insertMetaData
                           ,'insertArtistData
+                          ,'insertKeySongTrie
+                          ,'newKeyArtistTrie
+                          ,'updateKeyArtistTrie
                           ,'insertArtistCacheData
                           ,'insertArtistMapData
                           ,'insertArtistMap
@@ -461,6 +492,8 @@ $(makeAcidic ''StereoidDb ['insertSongData
                           ,'queryAlbumMap
                           ,'queryArtistMap
                           ,'queryArtistTrie
+                          ,'queryElemSongTrie
+                          ,'queryElemArtistTrie
                           ,'querySongTrie
                           ,'querySongCache
                           ,'queryAlbumCache
@@ -499,16 +532,16 @@ getFreeJobId acid = do
     let keys = IntMap.keys qr
     return $ head $ [1..] \\ keys
 
-getJob :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe DS.Job)
+getJob :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe Job)
 getJob acid id = do 
     qr <- query' acid (QueryJobsById id)
-    return $ fmap ((DS.Job id) . snd) qr
+    return $ fmap ((Job id) . snd) qr
 
-getJobs :: (Monad m, MonadIO m) => AcidState StereoidDb -> m [DS.Job]
+getJobs :: (Monad m, MonadIO m) => AcidState StereoidDb -> m [Job]
 getJobs acid = do
     jobs <- query' acid (QueryJobs)
     return $ map f (IntMap.toList jobs)
-        where f (id, job) = DS.Job id job
+        where f (id, job) = Job id job
 
 getSong :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe Song)
 getSong acid id = do 
@@ -530,7 +563,17 @@ getAlbum acid id = do
     qr <- query' acid (QueryAlbumCacheByAlbumId id)
     return $ fmap ((flip cacheToAlbum $ id) . snd) qr
 
-getArtist :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe DS.Artist)
+getAlbumCache :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe AlbumCacheData)
+getAlbumCache acid id = do
+    qr <- query' acid (QueryAlbumCacheByAlbumId id)
+    return $ fmap snd qr
+
+getArtistCache :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe ArtistCacheData)
+getArtistCache acid id = do
+    qr <- query' acid (QueryArtistCacheByArtistId id)
+    return $ fmap snd qr
+
+getArtist :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> m (Maybe Artist)
 getArtist acid id = do 
     qr <- query' acid (QueryArtistCacheByArtistId id)
     case qr of
@@ -639,7 +682,7 @@ getAlbums acid (offset,limit) = do
     return $ map f (take limit $ drop offset $ IntMap.toList albums)
         where f (id, alb) = cacheToAlbum alb id
 
-getArtists :: (Monad m, MonadIO m) => AcidState StereoidDb -> m [DS.Artist]
+getArtists :: (Monad m, MonadIO m) => AcidState StereoidDb -> m [Artist]
 getArtists acid = do 
     artists <- query' acid (QueryArtistCache)
     return $ map f (IntMap.toList artists)
@@ -657,6 +700,9 @@ getAlbumsByArtistId acid id = do
 
 insertRowSongDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> SongData -> m ()
 insertRowSongDb acid id ad = update' acid (InsertSongData id ad)
+
+insertRowSongCache :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> SongCacheData -> m ()
+insertRowSongCache acid id ad = update' acid (InsertSongCacheData id ad)
 
 insertRowAlbumCache :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> AlbumCacheData -> m ()
 insertRowAlbumCache acid id ad = update' acid (InsertAlbumCacheData id ad)
@@ -688,22 +734,41 @@ insertRowAlbumMap acid md id = update' acid (InsertAlbumMapData md id)
 insertRowArtistMap :: (Monad m, MonadIO m) => AcidState StereoidDb -> ArtistMapData -> Int -> m ()
 insertRowArtistMap acid md id = update' acid (InsertArtistMapData md id)
 
-insertRowJobsDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> DS.JobData -> m ()
+insertKeyArtistTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> B.ByteString -> m ()
+insertKeyArtistTrie acid ad = update' acid (NewKeyArtistTrie ad)
+
+insertRowJobsDb :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> JobData -> m ()
 insertRowJobsDb acid id ad = update' acid (InsertJobData id ad)
 
-updateJobStatus :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> DS.JobStatus -> m ()
+addToArtistTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> B.ByteString -> Int -> m ()
+addToArtistTrie acid key val = do
+    qr <- query' acid (QueryElemArtistTrie key)
+    let ids = case qr of
+                  Nothing -> [val]
+                  Just x  -> val:x
+    update' acid (UpdateKeyArtistTrie key ids)
+
+addToSongTrie :: (Monad m, MonadIO m) => AcidState StereoidDb -> B.ByteString -> Int -> m ()
+addToSongTrie acid key val = do
+    qr <- query' acid (QueryElemSongTrie key)
+    let ids = case qr of
+                  Nothing -> [val]
+                  Just x  -> val:x
+    update' acid (InsertKeySongTrie key ids)
+
+updateJobStatus :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> JobStatus -> m ()
 updateJobStatus acid id st = do
     qr <- query' acid (QueryJobsById id)
     case qr of
         Nothing      -> return ()
-        Just (_,job) -> update' acid (InsertJobData id (DS.setStatus job st)) 
+        Just (_,job) -> update' acid (InsertJobData id (setStatus job st)) 
 
 updateJobCount :: (Monad m, MonadIO m) => AcidState StereoidDb -> Int -> Int -> m ()
 updateJobCount acid id st = do
     qr <- query' acid (QueryJobsById id)
     case qr of
         Nothing      -> return ()
-        Just (_,job) -> update' acid (InsertJobData id (DS.changeCount job st)) 
+        Just (_,job) -> update' acid (InsertJobData id (changeCount job st)) 
 {-
 updateAlbumInfoFromLastFm :: AcidState StereoidDb -> Int -> IO ()
 updateAlbumInfoFromLastFm acid id = do
@@ -836,7 +901,7 @@ buildAlbumCache acid = do
                                                                , alcdSongIds = ((fst . unzip) all)
                                                                }))
 
-lastUpdate :: (Functor m, Monad m, MonadIO m) => AcidState StereoidDb -> m DS.Timestamp
+lastUpdate :: (Functor m, Monad m, MonadIO m) => AcidState StereoidDb -> m Timestamp
 lastUpdate  acid = fmap statsLastUpdate $ query' acid (QueryStats)
 
 songCount :: (Functor m, Monad m, MonadIO m) => AcidState StereoidDb -> m Int

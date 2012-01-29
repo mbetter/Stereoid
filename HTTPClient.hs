@@ -11,7 +11,6 @@ import Network.URI
 import Data.Aeson
 import LastFM.JSON
 import LastFM.Types
-import qualified Persistence.Types as P
 
 downloadFileWithMime :: String -> IO (Either String (Maybe B.ByteString,B.ByteString))
 downloadFileWithMime url =

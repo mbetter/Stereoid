@@ -4,22 +4,18 @@ module Main (main) where
 import Control.Monad           (msum)
 import Happstack.Server        (port, toResponse ,simpleHTTP, nullConf, dir, notFound, seeOther, serveDirectory, Browsing(..))
 import Web.Routes.Happstack    (implSite)
-import Database.HDBC
-import Database.HDBC.MySQL
-import RouteHandlers
-import Auth
 import Data.Acid
-import Data.Acid.Advanced
-import Persistence
-import Persistence.Types
-import qualified Data.Map as Map
 import Control.Concurrent (killThread, forkIO)
+
+import Auth
+import Types
+import RouteHandlers
 
 
 main :: IO ()
 main = do
-        users <- openLocalState (UserMap Map.empty)
-        sessions <- openLocalState (SessionMap Map.empty)
+        users <- openLocalState (UserMap emptyMap)
+        sessions <- openLocalState (SessionMap emptyMap)
         sdb <- openLocalState (sdbEmpty)
         httpThreadId <- forkIO $ simpleHTTP nullConf{ port = 80 } $ 
                                  msum [ dir "favicon.ico" $ notFound (toResponse ())
@@ -28,6 +24,7 @@ main = do
                                       , seeOther "" (toResponse ())
                                       ]
         c <- getChar
+        killThread httpThreadId
         closeAcidState sdb
         closeAcidState users
         closeAcidState sessions
