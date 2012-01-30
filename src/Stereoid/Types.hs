@@ -22,6 +22,12 @@ type UserName = String
 
 emptyMap = Map.empty
                         
+data StereoidConfig = StereoidConfig { cfgServerBase :: String
+                                     , cfgApiPath :: String
+                                     , cfgResourceDir :: String
+                                     , cfgStateDir :: String
+                                     }
+
 data Song  =  Song  { songID :: Int
                     , songName :: B.ByteString
                     , songTrack :: Int

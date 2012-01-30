@@ -42,11 +42,11 @@ import qualified Stereoid.Types.Internal as I
 decodePolicy :: BodyPolicy
 decodePolicy = (defaultBodyPolicy "/tmp/" 0 1000 1000)
 
-site :: AcidState StereoidDb -> AcidState UserMap -> AcidState SessionMap -> Site Sitemap (ServerPartT IO Response)
-site sdb users sessions = setDefault Home $ boomerangSite (runRouteT (route sdb users sessions)) sitemap
+site :: AcidState StereoidDb -> AcidState UserMap -> AcidState SessionMap -> String -> Site Sitemap (ServerPartT IO Response)
+site sdb users sessions resourcedir = setDefault Home $ boomerangSite (runRouteT (route sdb users sessions resourcedir)) sitemap
 
-route :: AcidState StereoidDb -> AcidState UserMap -> AcidState SessionMap -> Sitemap -> RouteT Sitemap (ServerPartT IO) Response
-route sdb users sessions url =
+route :: AcidState StereoidDb -> AcidState UserMap -> AcidState SessionMap -> String -> Sitemap -> RouteT Sitemap (ServerPartT IO) Response
+route sdb users sessions resourcedir url =
      do decodeBody decodePolicy
         rq <- askRq
         let chk = checkToken sessions 15
