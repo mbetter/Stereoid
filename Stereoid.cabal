@@ -78,6 +78,7 @@ Executable Stereoid
     split,
     libtagc,
     filepath,
+    ConfigFile,
     process
 
   
