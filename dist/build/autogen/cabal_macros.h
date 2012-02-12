@@ -7,6 +7,20 @@
   (major1) == 1 && (major2) <  1 || \
   (major1) == 1 && (major2) == 1 && (minor) <= 1)
 
+/* package HDBC-2.3.1.0 */
+#define VERSION_HDBC "2.3.1.0"
+#define MIN_VERSION_HDBC(major1,major2,minor) (\
+  (major1) <  2 || \
+  (major1) == 2 && (major2) <  3 || \
+  (major1) == 2 && (major2) == 3 && (minor) <= 1)
+
+/* package HDBC-mysql-0.6.5.1 */
+#define VERSION_HDBC_mysql "0.6.5.1"
+#define MIN_VERSION_HDBC_mysql(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  6 || \
+  (major1) == 0 && (major2) == 6 && (minor) <= 5)
+
 /* package HTTP-4000.1.2 */
 #define VERSION_HTTP "4000.1.2"
 #define MIN_VERSION_HTTP(major1,major2,minor) (\
@@ -90,6 +104,13 @@
   (major1) <  6 || \
   (major1) == 6 && (major2) <  0 || \
   (major1) == 6 && (major2) == 0 && (minor) <= 2)
+
+/* package haskell98-1.1.0.1 */
+#define VERSION_haskell98 "1.1.0.1"
+#define MIN_VERSION_haskell98(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  1 || \
+  (major1) == 1 && (major2) == 1 && (minor) <= 0)
 
 /* package libtagc-0.12.0 */
 #define VERSION_libtagc "0.12.0"

@@ -78,6 +78,9 @@ Executable Stereoid
     split,
     libtagc,
     filepath,
+    HDBC,
+    HDBC-mysql,
+    haskell98,
     ConfigFile,
     process
 

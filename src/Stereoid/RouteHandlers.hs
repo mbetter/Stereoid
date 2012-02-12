@@ -42,11 +42,11 @@ import qualified Stereoid.Types.Internal as I
 decodePolicy :: BodyPolicy
 decodePolicy = (defaultBodyPolicy "/tmp/" 0 1000 1000)
 
-site :: AcidState StereoidDb -> AcidState UserMap -> AcidState SessionMap -> String -> Site Sitemap (ServerPartT IO Response)
-site sdb users sessions resourcedir = setDefault Home $ boomerangSite (runRouteT (route sdb users sessions resourcedir)) sitemap
+site :: AcidState StereoidDb -> AcidState UserMap -> AcidState SessionMap -> String -> String -> Site Sitemap (ServerPartT IO Response)
+site sdb users sessions resourcedir statedir = setDefault Home $ boomerangSite (runRouteT (route sdb users sessions resourcedir statedir)) sitemap
 
-route :: AcidState StereoidDb -> AcidState UserMap -> AcidState SessionMap -> String -> Sitemap -> RouteT Sitemap (ServerPartT IO) Response
-route sdb users sessions resourcedir url =
+route :: AcidState StereoidDb -> AcidState UserMap -> AcidState SessionMap -> String -> String -> Sitemap -> RouteT Sitemap (ServerPartT IO) Response
+route sdb users sessions resourcedir statedir url =
      do decodeBody decodePolicy
         rq <- askRq
         let chk = checkToken sessions 15
@@ -62,8 +62,8 @@ route sdb users sessions resourcedir url =
                     (Albums)                -> chk $ albumsAll sdb 
                     (AlbumSongs albumId)    -> chk $ albumSongs sdb albumId
                     (AlbumM3U albumId)      -> chk $ albumSongsM3U sdb albumId
-                    (AlbumArt albumId)      -> chk $ serveArt sdb albumId
-                    (AlbumArtThumb albumId) -> chk $ serveGenThumb sdb albumId
+                    (AlbumArt albumId)      -> chk $ serveArt sdb resourcedir statedir albumId
+                    (AlbumArtThumb albumId) -> chk $ serveGenThumb sdb resourcedir statedir albumId
                     (Jobs)                  -> chk $ jobsAll sdb
                     (JobInfo jobId)         -> chk $ jobData sdb jobId
                     (Catalogs)              -> chk $ catalogsAll sdb
@@ -74,7 +74,7 @@ route sdb users sessions resourcedir url =
              POST -> case url of
                     (Sessions)              -> authorize users sessions
                     (AlbumArt albumId)      -> chk $ getArtFromUrl sdb albumId
-                    (Users)                 -> chk $ addUser users
+                    (Users)                 -> addUser users
                     (Catalogs)              -> chk $ catalogNew sdb
 
 catalogNew :: AcidState StereoidDb -> RouteT Sitemap (ServerPartT IO) Response
@@ -246,30 +246,30 @@ getThumbFromUrl sdb (AlbumId artid) = do
                                       ok $ toResponse "Thumb added."
                                       where afn x = ("thumb/" ++ (show x))
 -}
-serveArt :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
-serveArt sdb (AlbumId artid) = do
+serveArt :: AcidState StereoidDb -> String -> String -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
+serveArt sdb rd sd (AlbumId artid) = do
     dr <- getArt sdb artid
     case dr of
-        Just (mime,art) -> serveFileUsing filePathSendAllowRange (asContentType $ B.toString mime) $ art
-        Nothing         -> serveFile (asContentType "image/png") "media_album.png"
+        Just (mime,art) -> serveFileUsing filePathSendAllowRange (asContentType $ B.toString mime) $ (sd ++ art)
+        Nothing         -> serveFile (asContentType "image/png") (rd ++ "media_album.png")
 
-serveGenThumb :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
-serveGenThumb sdb (AlbumId artid) = do
+serveGenThumb :: AcidState StereoidDb -> String -> String -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
+serveGenThumb sdb rd sd (AlbumId artid) = do
     dr <- getThumb sdb artid
     case dr of
         Just (tmime,tart) -> serveFileUsing filePathSendAllowRange (asContentType $ B.toString tmime) $ tart
         Nothing         -> do
             aa <- getArtData sdb artid
             case aa of
-                Nothing         -> serveFile (asContentType "image/png") "media_album.png"
+                Nothing         -> serveFile (asContentType "image/png") (rd ++ "media_album.png")
                 Just (AlbumArtData amime file _  _) -> do
                     let tfn = ("thumb/" ++ (show artid))
-                    result <- liftIO $ system $ "convert " ++ file ++ " -resize '200x200!>' " ++ tfn
+                    result <- liftIO $ system $ "convert " ++ file ++ " -resize '200x200!>' " ++ (sd ++ tfn)
                     case result of
                         ExitSuccess   -> do
                             insertRowAlbumArtDb sdb artid (AlbumArtData amime file (Just amime) (Just tfn))
-                            serveFileUsing filePathSendAllowRange (asContentType $ B.toString amime) $ tfn
-                        ExitFailure _ -> serveFile (asContentType "image/png") "media_album.png"
+                            serveFileUsing filePathSendAllowRange (asContentType $ B.toString amime) $ (sd ++ tfn)
+                        ExitFailure _ -> serveFile (asContentType "image/png") (rd ++ "media_album.png")
         
 serveThumb :: AcidState StereoidDb -> AlbumId -> RouteT Sitemap (ServerPartT IO) Response
 serveThumb sdb (AlbumId artid) = do

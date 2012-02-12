@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Conversion where
 
-import Persistence
-import Types
+import Stereoid.Persistence
+import Stereoid.Types
 import Database.HDBC
 import Database.HDBC.MySQL
 import qualified Data.ByteString as BS

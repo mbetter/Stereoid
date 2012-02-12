@@ -161,15 +161,16 @@ metaDataDb StereoidDb {sdbMetaData = MetaDataDb x} = x
 stats StereoidDb { sdbStats = x } = x
 jobsDb StereoidDb { sdbJobs = JobsDb x } = x
 
+(.:) :: (b -> c) -> (a1 -> a -> b) -> a1 -> a -> c
+(.:) = (.) . (.)
+
 -- | Used with an unwrap function to apply a function on the internals of a StereoidDb member.
 withDb :: (StereoidDb -> a) -> (a -> b) -> Query StereoidDb b
-withDb unw f = do db <- ask
-                  return $ (f . unw) db
+withDb = asks .: (flip (.))
 
 -- | Used with an unwrap function to pull the entirety of a StereoidDb member.
 getDb :: (StereoidDb -> a) -> Query StereoidDb a
-getDb f = do db <- ask
-             return $ f db
+getDb = asks
 
 -- | Primary key query function. Tons of these out there.
 queryJobsById :: Int -> Query StereoidDb (Maybe (Int,JobData))
@@ -205,14 +206,14 @@ fKey f b a = (f a) == b
 
 -- | Filters an IntMap by a predicate and returns it as a (key,value) list.
 imFilterList :: (a -> Bool) -> IntMap.IntMap a -> [(Int,a)]
-imFilterList p = IntMap.toList . (IntMap.filter p)
+imFilterList = IntMap.toList .: IntMap.filter
 
 -- | Compose this function with a foreign key funcition to get a foreign key song query function, ex:
 -- @
 --   querySongsByForeignKey . (fKey sodAlbumId)
 -- @
 querySongsByForeignKey :: (SongData -> Bool) -> Query StereoidDb [(Int,SongData)]
-querySongsByForeignKey p = (withDb songDb) $ (imFilterList $ p)
+querySongsByForeignKey = (withDb songDb) . imFilterList
 
 -- | Foreign key query function. Common functions have their own indices built so these shouldn't have to 
 -- be used all that much.
@@ -878,7 +879,7 @@ buildSongCache acid = do
     qs <- query' acid (QuerySongs)
     qa <- query' acid (QueryAlbums)
     qb <- query' acid (QueryArtists)
-    update' acid (InsertSongCache $ SongCache $ IntMap.map (f qa qb) (qs))
+    update' acid (InsertSongCache $ SongCache $ fmap (f qa qb) (qs))
     where f albums artists song = sodToScd song (aldTitle $ albums IntMap.! (sodAlbumId song)) (ardName $ artists IntMap.! (sodArtistId song))
     
 buildAlbumCache :: (Monad m, MonadIO m) => AcidState StereoidDb -> m ()
