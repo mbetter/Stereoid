@@ -25,12 +25,13 @@ main = do
                 sdb <- openLocalStateFrom (statedir ++ "Stereoid.Types.StereoidDb") (sdbEmpty)
                 args <- getArgs
                 doArgs args sdb
-                httpThreadId <- forkIO $ simpleHTTP nullConf{ port = 80 } $ 
-                                         msum [ dir "favicon.ico" $ notFound (toResponse ())
-                                              , implSite host apidir (site sdb users sessions resourcedir statedir)
-                                              , serveDirectory DisableBrowsing ["index.html"] (resourcedir ++ "static")
-                                              , seeOther "" (toResponse ())
-                                              ]
+                httpThreadId <- forkIO $ withAcid Nothing $ \acid ->
+                                          simpleHTTP nullConf{ port = 80 } $ 
+                                             msum [ dir "favicon.ico" $ notFound (toResponse ())
+                                                  , (runApp acid) $ implSite host apidir (site sdb users sessions resourcedir statedir)
+                                                  , serveDirectory DisableBrowsing ["index.html"] (resourcedir ++ "static")
+                                                  , seeOther "" (toResponse ())
+                                                  ]
                 c <- getChar
                 killThread httpThreadId
                 closeAcidState sdb
