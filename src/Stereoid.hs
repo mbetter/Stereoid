@@ -12,7 +12,6 @@ import Stereoid.Auth
 import Stereoid.Types
 import Stereoid.Config
 import Stereoid.RouteHandlers
-import Stereoid.Conversion
 
 main :: IO ()
 main = do
@@ -23,8 +22,6 @@ main = do
                 users <- openLocalStateFrom (statedir ++ "Stereoid.Auth.UserMap") (UserMap emptyMap)
                 sessions <- openLocalStateFrom (statedir ++ "Stereoid.Auth.SessionMap") (SessionMap emptyMap)
                 sdb <- openLocalStateFrom (statedir ++ "Stereoid.Types.StereoidDb") (sdbEmpty)
-                args <- getArgs
-                doArgs args sdb
                 httpThreadId <- forkIO $ simpleHTTP nullConf{ port = 80 } $ 
                                          msum [ dir "favicon.ico" $ notFound (toResponse ())
                                               , implSite host apidir (site sdb users sessions resourcedir statedir)
@@ -37,6 +34,3 @@ main = do
                 closeAcidState users
                 closeAcidState sessions
                 putStrLn "Server stopped."
-                where doArgs [] _                  = return ()
-                      doArgs (x:_) sdb | x == "-c" = runConversion sdb
-                      doArgs _ _                   = return ()
