@@ -122,7 +122,7 @@ instance HasAcidState App SessionMap where
     getAcidState = acidSessionMap   <$> ask
 
 runApp :: Acid -> App a -> ServerPartT IO a
-runApp acid (App sp) = mapServerPartT (flip runReaderT acid) sp
+runApp acid (App sp)= mapServerPartT (flip runReaderT acid) sp
 
 catalogNew :: AcidState StereoidDb -> RouteT Sitemap App Response
 catalogNew sdb = undefined
